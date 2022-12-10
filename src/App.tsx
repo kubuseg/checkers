@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
+import init, { add } from "rust-wasm-lib";
 
 function App() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    init()
+  }, [])
+
   return (
     <div className="App">
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>
-          Edit <code>src/App.tsx</code> and save to reload.
+          <button onClick={() => setCount(add(1,count))}>
+          Click me
+          </button>
+          <p>2^{count} = {Math.pow(2, count)}</p>
         </p>
         <a
           className="App-link"
