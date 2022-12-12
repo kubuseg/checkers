@@ -2,24 +2,31 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import init, { add } from "rust-wasm-lib";
 
-function Square(props: { onClick: React.MouseEventHandler<HTMLButtonElement>; value: number; }) {
+function Square(props: { onClick: React.MouseEventHandler<HTMLButtonElement>; 
+                         value: string; color:string; }) 
+{
   return (
-    <button className="square" onClick={props.onClick}>
+    <button className="square" style={{ backgroundColor: props.color}} onClick={props.onClick}>
       {props.value}
     </button>
   );
 }
 
-class Board extends React.Component<any, any> {
-  constructor(props : any) {
+interface IBoardState {
+  squares: string[];
+  xIsNext: boolean;
+}
+
+class Board extends React.Component<{}, IBoardState> {
+  constructor(props : IBoardState) {
     super(props);
     this.state = {
-      squares: Array(9).fill(null),
+      squares: Array(100).fill(null),
       xIsNext: true,
     };
   }
 
-  handleClick(i : number) {
+  handleClick(i:number) {
     const squares = this.state.squares.slice();
     if (calculateWinner(squares) || squares[i]) {
       return;
@@ -33,10 +40,12 @@ class Board extends React.Component<any, any> {
 
   
   renderSquare(i: number) {
+    const backgroundColor = [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11) ? "#693e3e" : "#ffd6ae";
     return (
       <Square
         value={this.state.squares[i]}
         onClick={() => this.handleClick(i)}
+        color={backgroundColor}
       />
     );
   }
@@ -50,23 +59,28 @@ class Board extends React.Component<any, any> {
       status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
     }
 
-    const rows = [];
-    for (let i = 0; i < 36; i+=6) {
-      rows.push(
-        <div className="board-row">
-          {this.renderSquare(i)}
-          {this.renderSquare(i+1)}
-          {this.renderSquare(i+2)}
-          {this.renderSquare(i+3)}
-          {this.renderSquare(i+4)}
-          {this.renderSquare(i+5)}
-        </div>
-      );
+    const board = [];
+    for(let i = 0; i < 10; i++){
+      const squareRows = [];
+      for(let j = 0; j < 10; j++){
+        const backgroundColor = [1, 3, 5, 7, 9].includes(Math.abs(j-i)%11) ? "#693e3e" : "#ffd6ae";
+        squareRows.push(
+          <Square
+          value={this.state.squares[i*10+j]}
+          onClick={() => this.handleClick(i*10+j)}
+          color={backgroundColor}
+        />
+        );
+      }
+      board.push(<div className="board-row">{squareRows}</div>)
     }
+
     return (
       <div>
         <div className="status">{status}</div>
-        <tbody>{rows}</tbody>
+        <div>
+          {board}
+        </div>
       </div>
     );
   }
@@ -90,7 +104,7 @@ class Game extends React.Component {
 
 export default Game;
 
-function calculateWinner(squares: any[]) {
+function calculateWinner(squares: string[]) {
   return null;
 }
 
