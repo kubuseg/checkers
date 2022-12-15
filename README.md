@@ -1,46 +1,71 @@
-# Getting Started with Create React App
+# Zaawansowane programowanie w C++ 
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Gra na przeglądarkę z użyciem WebAssembly
 
-## Available Scripts
+#### Dokumentacja wstępna projektu
 
-In the project directory, you can run:
+Skład zespołu: Katarzyna Glaza, Jakub Nitkiewicz
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+[Ogólny opis projektu	1](#_Toc138335219)
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+[Temat projektu	1](#_Toc373063069)
 
-### `npm test`
+[Zasady gry	1](#_Toc1065200622)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+[Dodatkowe założenia	2](#_Toc750165419)
 
-### `npm run build`
+[Technologie	2](#_Toc793952479)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+[Zadania do wykonania	2](#_Toc2088189025)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+[Etap 1.	2](#_Toc2045757164)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+[Etap 2.	3](#_Toc535475920)
 
-### `npm run eject`
+[Planowane testy	3](#_Toc1717203983)
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+# Ogólny opis projektu
+Zadanie polega na napisaniu gry w architekturze klient-serwer, klient powinien wykorzystywać jedynie przeglądarkę www. Dodatkowo klient powinien być zaimplementowany przy użyciu WebAssembly.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Gra powinna być przynajmniej dwuosobowa. Reguły gry - wikipedia lub inne źródło. Zespół może wybrać następujące opcje: Gra dwuosobowa, aplikacja dba o przestrzeganie zasad Gra jednoosobowa z komputerem, wtedy należy dostarczyć algorytm dla sztucznego gracza, wykorzystujący np. drzewo gry. Przy wyborze pierwszej opcji implementacja logiki gry nie musi znajdować się na serwerze.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+WASM można generować m.in. na podstawie kodu w języku Rust albo C++.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+# Temat projektu
+Grą dwuosobową, którą zaimplementujemy są warcaby w wariancie polskim. Zostaną one napisane w dwóch trybach: jako gra dwuosobowa oraz gra z komputerem. Dodatkowo, zaimplementowany zostanie algorytm wyboru ruchów komputera - algorytm minimax z cięciami 𝛼−𝛽 . 
 
-## Learn More
+# Zasady gry
+Zasady gry, według których zaimplementowana zostanie gra są następujące:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Pionki graczy umieszczone są na ciemnych polach planszy o rozmiarze 10x10. Każdy gracz rozpoczyna grę z dwudziestoma pionkami swojego koloru (białymi lub czarnymi). Pionki ustawione są na planszy w ten sposób, że dwa środkowe rzędy planszy są wolne. Jako pierwszy ruch wykonuje gracz poruszający się białymi pionkami, ruchy obydwu graczy są naprzemienne. Bicie pionków jest obowiązkowe do końca (jeżeli gracz ma możliwość bicia więcej niż jednego pionka, musi wykonać maksymalną liczbę bić). Celem gry jest zbicie wszystkich pionków przeciwnika lub uniemożliwienie wykonania przez niego ruchu. Pionek może poruszać się po przekątnej na wolne pole i ma możliwość swobodnego przejścia o jedno pole. W przypadku bicia, pionek może poruszać się do przodu oraz do tyłu wykonując więcej skoków. Pionek, który dotrze na przeciwny koniec planszy zamienia się w damkę. Damka porusza się o dowolną liczbę pól do przodu lub do tyłu po przekątnej. Damka bijąc pionka przeskakuje na pole za zbitym pionkiem i może kontynuować bicie na tej samej lub prostopadłej linii. 
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Dodatkowe założenia
+Poza zastosowaniem zasad zgodnymi z polską wersją gry, wprowadzone zostaną także następujące założenia:
+
+Użytkownik przed rozpoczęciem gry może wybrać jeden z jej dwóch dostępnych trybów: grę z innym użytkownikiem oraz grę z komputerem. Przy wyborze gry dwuosobowej użytkownik jest pytany o swoją nazwę i oczekuje aż do pojawienia się drugiego gracza. Przed rozpoczęciem rozgrywki, będzie miał możliwość wyboru koloru pionków, przyjmiemy również uproszczenie, że każdy użytkownik ma umiejscowione swoje pionki na spodzie planszy, a zbite pionki zostają usunięte z planszy po wykonaniu bicia do końca. Dodatkowo, na ekranie będą znajdowały się liczniki zbitych pionków dla obydwu graczy.
+
+# Technologie
+Gra zostanie zaimplementowana w języku Rust, w implementacji backendu wykorzystamy WebAssembly, a frontendu - JavaScript. Dodatkowo, skorzystamy z takich narzędzi jak:
+
+- wasm-pack, który posłuży do budowania, testowania i publikowania WebAssembly generowanego przez Rust,
+- cargo, który jest menadżerem pakietów Rust,
+- npm, który jest menadżerem pakietów JavaScript,
+- rustfmt, który służy do formatowania kodu,
+- clippy, które służy do statycznej analizy kodu
+
+# Zadania do wykonania
+W realizacji praktycznej części naszego projektu wyróżniamy 2 podstawowe etapy.
+
+W etapie 1. konfigurujemy wszystkie narzędzia i setupujemy środowisko, implementujemy frontend i backend aplikacji oraz zapewniamy przepływ informacji pomiędzy nimi, natomiast w etapie 2. implementujemy logikę gry w warcaby w obu trybach.
+
+## Etap 1.
+1. Skonfigurowanie zestawu narzędzi Rust do kompilacji do WebAssembly, podstawowe połączenie WebAssembly z JavaScript
+1. Stworzenie GUI
+1. Zapewnienie przepływu informacji pomiędzy wszystkimi komponentami
+## Etap 2.
+1. Implementacja logiki gry w trybie dla dwóch osób
+1. Implementacja algorytmu minimax z cięciem 𝛼−𝛽 do wersji trybu gry z komputerem
+
+# Planowane testy
+Zostaną przeprowadzone testy jednostkowe poprawności działania metod związanych z logiką gry, a także testy integracyjne sprawdzające czy wszystkie komponenty współdziałają ze sobą poprawnie. Do napisanie testów wykorzystane zostanie narzędzie wbudowane cargo-test oraz wasm-pack. Dodatkowo, w algorytmie minimax dostrojony zostanie parametr głębokości tak, aby komputer nie grał “zbyt dobrze”, a użytkownik miał szansę wygrania rozgrywanej z nim partii.
