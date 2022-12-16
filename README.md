@@ -87,7 +87,8 @@ Pobranie ich jest opisane na stronie [https://rustwasm.github.io/book/game-of-li
 
 **Następnie należy wykonać następujące kroki:**
 - Sklonować projekt
-- Będąc w katalogu projektu uruchomić w terminalu `npm install`
+- W folderze rust-wasm-lib uruchomić `wasm-pack build`
+- W głównym kalalogu projektu uruchomić `npm install`
 - Następnie można przetestować rozwiązanie wpisując `npm start`
 
 ## Generowanie dokumetacji
