@@ -69,3 +69,31 @@ W etapie 1. konfigurujemy wszystkie narzędzia i setupujemy środowisko, impleme
 
 # Planowane testy
 Zostaną przeprowadzone testy jednostkowe poprawności działania metod związanych z logiką gry, a także testy integracyjne sprawdzające czy wszystkie komponenty współdziałają ze sobą poprawnie. Do napisanie testów wykorzystane zostanie narzędzie wbudowane cargo-test oraz wasm-pack. Dodatkowo, w algorytmie minimax dostrojony zostanie parametr głębokości tak, aby komputer nie grał “zbyt dobrze”, a użytkownik miał szansę wygrania rozgrywanej z nim partii.
+
+# Szkielet Aplikacji
+## Instrukcja zbudowania i przetestowania aplikacji:
+**Wymagania wstępne:**
+
+Narzędzia:
+- rustup
+- rustc
+- rustdoc
+- typedoc
+- cargo
+- cargo-generate
+- npm
+
+Pobranie ich jest opisane na stronie [https://rustwasm.github.io/book/game-of-life/setup.html](url)
+
+**Następnie należy wykonać następujące kroki:**
+- Sklonować projekt
+- Będąc w katalogu projektu uruchomić w terminalu `npm install`
+- Następnie można przetestować rozwiązanie wpisując `npm start`
+
+## Generowanie dokumetacji
+Dla rust:
+`rustdoc rust-wasm-lib/src/lib.rs --crate-name docs`
+
+Dla typesript:
+`npx typedoc src/index.tsx`
+
