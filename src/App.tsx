@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import init, { add } from "rust-wasm-lib";
+import { Console } from 'console';
 
-function Square(props: { onClick: React.MouseEventHandler<HTMLButtonElement>; 
-                         value: string; color:string; }) 
+interface ISquare {
+  onClick: React.MouseEventHandler<HTMLButtonElement>; 
+  value: string;
+  color: string;
+}
+
+function Square(props: ISquare) 
 {
+  const [isShowingMoves, setisShowingMoves] = useState(false);
+
   return (
     <button className="square" style={{ backgroundColor: props.color}} onClick={props.onClick}>
       {props.value}
@@ -13,8 +21,8 @@ function Square(props: { onClick: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 interface IBoardState {
-  squares: string[];
-  xIsNext: boolean;
+  squares: any[];
+  whiteIsNext: boolean;
 }
 
 class Board extends React.Component<{}, IBoardState> {
@@ -22,32 +30,30 @@ class Board extends React.Component<{}, IBoardState> {
     super(props);
     this.state = {
       squares: Array(100).fill(null),
-      xIsNext: true,
+      whiteIsNext: true,
     };
+    for (let i=0; i<30; ++i) {
+      if ([1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11))
+        this.state.squares[i] = <div className="circle" style={{ backgroundColor: "black"}}/>;
+    }
+    for (let i=99; i>=70; --i) {
+      if ([1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11))
+        this.state.squares[i] = <div className="circle" style={{ backgroundColor: "white"}}/>;
+    }
   }
+
 
   handleClick(i:number) {
     const squares = this.state.squares.slice();
-    if (calculateWinner(squares) || squares[i]) {
-      return;
+
+    if (squares[i] !== null) {
+      squares[i+1] = <div className="square" style={{ backgroundColor: 'sandybrown'}} />
     }
-    squares[i] = this.state.xIsNext ? 'X' : 'O';
+
     this.setState({
       squares: squares,
-      xIsNext: !this.state.xIsNext,
+      whiteIsNext: !this.state.whiteIsNext,
     });
-  }
-
-  
-  renderSquare(i: number) {
-    const backgroundColor = [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11) ? "#693e3e" : "#ffd6ae";
-    return (
-      <Square
-        value={this.state.squares[i]}
-        onClick={() => this.handleClick(i)}
-        color={backgroundColor}
-      />
-    );
   }
 
   render() {
@@ -56,7 +62,7 @@ class Board extends React.Component<{}, IBoardState> {
     if (winner) {
       status = 'Winner: ' + winner;
     } else {
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+      status = 'Next player: ' + (this.state.whiteIsNext ? 'White' : 'Black');
     }
 
     const board = [];
@@ -104,7 +110,10 @@ class Game extends React.Component {
 
 export default Game;
 
-function calculateWinner(squares: string[]) {
+function getPossibleMoves(square: any, figure: any){
+}
+
+function calculateWinner(squares: string[]){
   return null;
 }
 
