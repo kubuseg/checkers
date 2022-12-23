@@ -24,7 +24,7 @@ function Square(props: ISquareProps)
 {
   return (
     <button 
-    className="square" 
+    className="square"
     style={{ backgroundColor: props.color}} 
     onClick={props.onClick}>
       {props.value && <Figure color={props.value.color} type={props.value.type} />}
@@ -43,9 +43,9 @@ function Board(props: IBoardProps) {
   for(let i = 0; i < 10; i++){
     const squareRows = [];
     for(let j = 0; j < 10; j++){
-      const backgroundColor = 
-      [1, 3, 5, 7, 9].includes(Math.abs(j-i)%11) ? "#693e3e" : "#ffd6ae";
       const squareNo = i*10+j;
+      const backgroundColor = 
+      isOnDarkDiag(squareNo) ? "#693e3e" : "#ffd6ae";
       const squareValue = props.squareValue[squareNo];
       squareRows.push(
         <Square
@@ -75,29 +75,35 @@ export default class Game extends React.Component<{}, IGameState> {
   constructor(props : IGameState) {
     super(props);
     this.state = {
-      squareValue: Array(100).fill(null),
+      squareValue: Array(100).fill(null)
+      .map((val:(IFigure | null), i:number) => {
+          if (isOnDarkDiag(i)) {
+            if (i < 30)
+              return {color:'black', type:'man'};
+            if (i >= 70)
+              return {color:'white', type:'man'};
+          }
+          return null;
+      }),
       seletedSquare: null,
       whiteIsNext: true,
     };
-    for (let i=0; i<30; ++i) {
-      if ([1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11))
-        this.state.squareValue[i] = {color:'black', type:'man'};
-    }
-    for (let i=99; i>=70; --i) {
-      if ([1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11))
-        this.state.squareValue[i] = {color:'white', type:'man'};
-    }
+
   }
 
   handleClick = (i:number, figure:IFigure|null) => {
     const squares = this.state.squareValue.slice();
-    if (squares[i] !== null && this.state.seletedSquare === null) {
-
+    let selectedSquare = null;
+    if (squares[i] !== null) {
+      if (this.state.seletedSquare && this.state.seletedSquare === i)
+        selectedSquare = null;
+      else 
+        selectedSquare = i;
     }
 
     this.setState({
       squareValue: squares,
-      seletedSquare: i,
+      seletedSquare: selectedSquare,
     });
   }
 
@@ -121,6 +127,10 @@ export default class Game extends React.Component<{}, IGameState> {
       </div>
     );
   }
+}
+
+const isOnDarkDiag = (i:number) : boolean => {
+  return [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11)
 }
 
 
