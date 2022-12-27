@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import init, { add } from "rust-wasm-lib";
+import init, {possible_moves} from 'rust-wasm-lib';
+
 
 interface IFigure { 
   color: "black" | "white";
-  type: "man" | "king";
+  kind: "man" | "king";
 }
 
 function Figure(props: IFigure)
@@ -27,7 +28,7 @@ function Square(props: ISquareProps)
     className="square"
     style={{ backgroundColor: props.color}} 
     onClick={props.onClick}>
-      {props.value && <Figure color={props.value.color} type={props.value.type} />}
+      {props.value && <Figure color={props.value.color} kind={props.value.kind} />}
     </button>
   );
 }
@@ -71,70 +72,62 @@ interface IGameState {
   whiteIsNext: boolean;
 }
 
-export default class Game extends React.Component<{}, IGameState> {
-  constructor(props : IGameState) {
-    super(props);
-    this.state = {
-      squareValue: Array(100).fill(null)
+export default function Game() {
+  const [squareValue, setSqareValue] = useState<(IFigure | null)[]>(
+    Array(100).fill(null)
       .map((val:(IFigure | null), i:number) => {
           if (isOnDarkDiag(i)) {
             if (i < 30)
-              return {color:'black', type:'man'};
+              return {color:'black', kind:'man'};
             if (i >= 70)
-              return {color:'white', type:'man'};
+              return {color:'white', kind:'man'};
           }
           return null;
-      }),
-      seletedSquare: null,
-      whiteIsNext: true,
-    };
+      })
+  );
+  const [seletedSquare, setSeletedSquare] = useState<number | null>(null);
+  const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
+  const [possibleMoves, setPossibleMoves] = useState<number[]|null>(null);
 
-  }
-
-  handleClick = (i:number, figure:IFigure|null) => {
-    const squares = this.state.squareValue.slice();
-    let selectedSquare = null;
+  useEffect(() => {
+    init().then(() => {
+      setPossibleMoves(seletedSquare && possible_moves(seletedSquare, squareValue[seletedSquare], squareValue))
+    })
+  });
+  const handleClick = (i:number, figure:IFigure|null) => {
+    const squares = squareValue.slice();
+    let newSelectedSquare = null;
     if (squares[i] !== null) {
-      if (this.state.seletedSquare && this.state.seletedSquare === i)
-        selectedSquare = null;
+      if (seletedSquare && seletedSquare === i)
+        newSelectedSquare = null;
       else 
-        selectedSquare = i;
+        newSelectedSquare = i;
+      
+      console.log(`i:${i}, figure:${figure?.color} kind:${figure?.kind}`)
     }
 
-    this.setState({
-      squareValue: squares,
-      seletedSquare: selectedSquare,
-    });
+    setSqareValue(squares);
+    setSeletedSquare(newSelectedSquare);
   }
 
-  render() {
-    const winner = calculateWinner(this.state.squareValue);
-    let status;
-    if (winner)
-      status = 'Winner: ' + winner;
-    else
-      status = 'Next player: ' + (this.state.whiteIsNext ? 'White' : 'Black');
-    return (
-      <div className="game">
-        <div className="game-board">
-        <div className="status">{status}</div>
-          <Board 
-          squareValue={this.state.squareValue}
-          selectedSquare={this.state.seletedSquare}
-          onClick={this.handleClick}
-          />
-        </div>
+
+  
+  return (
+    <div className="game">
+      <div className="game-board">
+      <div className="status">{'Next player: ' + (whiteIsNext ? 'White' : 'Black')}</div>
+        <Board 
+        squareValue={squareValue}
+        selectedSquare={seletedSquare}
+        onClick={handleClick}
+        />
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 const isOnDarkDiag = (i:number) : boolean => {
   return [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11)
-}
-
-
-function getPossibleMoves(square: any, figure: any){
 }
 
 function calculateWinner(squares: any[]){
