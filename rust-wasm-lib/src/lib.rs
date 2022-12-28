@@ -47,10 +47,6 @@ pub fn possible_moves(i: i16, figure: JsValue, square_values: JsValue) -> Result
     Ok(serde_wasm_bindgen::to_value(&poss_moves)?)
 }
 
-// pub fn optional_new(_i: Option<ITextStyle>) -> TextStyle {
-//     // parse JsValue
-//     TextStyle::default()
-// }
 
 #[cfg(test)]
 mod tests {

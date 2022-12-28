@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import init, {possible_moves} from 'rust-wasm-lib';
+import init, {possible_moves} from './../rust-wasm-lib/pkg';
 
 
 interface IFigure { 
