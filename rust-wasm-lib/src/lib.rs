@@ -16,32 +16,21 @@ pub struct IFigure {
 
 
 #[wasm_bindgen]
-pub fn possible_moves(i: i16, figure: JsValue, square_values: JsValue) -> Result<JsValue, JsValue> {
+pub fn possible_moves(i: i32, figure: JsValue, square_values: JsValue) -> Result<JsValue, JsValue> {
     let fig: IFigure = serde_wasm_bindgen::from_value(figure)?;
     let sqr_values: Vec<Option<IFigure>> = serde_wasm_bindgen::from_value(square_values)?;
-    let mut poss_moves: Vec<i16> = vec![];
+    let poss_moves: Vec<i32>;
     if fig.color == "black" {
-        if i%10 == 0 {
-            poss_moves.push(i+11);
-        } 
-        else if i%10 == 9 {
-            poss_moves.push(i+9);
-        } 
-        else {
-            poss_moves.push(i+9);
-            poss_moves.push(i+11);
+        match i%10 {
+            0 => poss_moves = vec![i+11],
+            9 => poss_moves = vec![i+9],
+            _ => poss_moves = vec![i+9, i+11],
         }
-    } 
-    else {
-        if i%10 == 0 {
-            poss_moves.push(i-9);
-        } 
-        else if i%10 == 9 {
-            poss_moves.push(i-11);
-        }
-        else {
-            poss_moves.push(i-9);
-            poss_moves.push(i-11);
+    } else {
+        match i%10 {
+            0 => poss_moves = vec![i-9],
+            9 => poss_moves = vec![i-11],
+            _ => poss_moves = vec![i-9, i-11]
         }
     }
     Ok(serde_wasm_bindgen::to_value(&poss_moves)?)

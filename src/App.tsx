@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import init, {possible_moves} from './../rust-wasm-lib/pkg';
+import init, {possible_moves} from './pkg';
 
 
 interface IFigure { 
@@ -91,23 +91,21 @@ export default function Game() {
 
   useEffect(() => {
     init().then(() => {
-      setPossibleMoves(seletedSquare && possible_moves(seletedSquare, squareValue[seletedSquare], squareValue))
+      const possibleMoves = seletedSquare && possible_moves(seletedSquare, squareValue[seletedSquare], squareValue);
+      setPossibleMoves(possibleMoves)
     })
   });
   const handleClick = (i:number, figure:IFigure|null) => {
     const squares = squareValue.slice();
     let newSelectedSquare = null;
     if (squares[i] !== null) {
-      if (seletedSquare && seletedSquare === i)
-        newSelectedSquare = null;
-      else 
-        newSelectedSquare = i;
-      
-      console.log(`i:${i}, figure:${figure?.color} kind:${figure?.kind}`)
+      newSelectedSquare = (seletedSquare && seletedSquare === i) ? null : i;
+      console.log(`i:${i} figure:${figure?.color} kind:${figure?.kind} selSqare: ${newSelectedSquare}`)
+      console.log(possibleMoves);
     }
 
-    setSqareValue(squares);
     setSeletedSquare(newSelectedSquare);
+    setSqareValue(squares);
   }
 
 
