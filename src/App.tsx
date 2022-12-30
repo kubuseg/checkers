@@ -34,8 +34,8 @@ function Square(props: ISquareProps)
 }
 
 interface IBoardProps {
-  squareValue: (IFigure | null)[];
-  selectedSquare: number | null;
+  figure: Map<number, IFigure>;
+  possibleMoves: number[] | null;
   onClick: (squareNo:number, squareValue:IFigure|null) => void;
 }
 
@@ -47,12 +47,12 @@ function Board(props: IBoardProps) {
       const squareNo = i*10+j;
       const backgroundColor = 
       isOnDarkDiag(squareNo) ? "#693e3e" : "#ffd6ae";
-      const squareValue = props.squareValue[squareNo];
+      const figure = props.figure.get(squareNo) ?? null;
       squareRows.push(
         <Square
-        value={props.squareValue[squareNo]}
-        onClick={() => props.onClick(squareNo, squareValue)}
-        color={props.selectedSquare === squareNo ? 'sandybrown' : backgroundColor}
+        value={figure}
+        onClick={() => props.onClick(squareNo, figure)}
+        color={props.possibleMoves && props.possibleMoves[squareNo] ? 'sandybrown' : backgroundColor}
       />
       );
     }
@@ -66,46 +66,32 @@ function Board(props: IBoardProps) {
   );
 }
 
-interface IGameState {
-  squareValue: (IFigure | null)[];
-  seletedSquare: number | null;
-  whiteIsNext: boolean;
-}
-
 export default function Game() {
-  const [squareValue, setSqareValue] = useState<(IFigure | null)[]>(
-    Array(100).fill(null)
-      .map((val:(IFigure | null), i:number) => {
-          if (isOnDarkDiag(i)) {
-            if (i < 30)
-              return {color:'black', kind:'man'};
-            if (i >= 70)
-              return {color:'white', kind:'man'};
-          }
-          return null;
-      })
-  );
+  const [figureMap, setFigureMap] = useState<Map<number, IFigure>>(
+    getInitialFiguresState()
+    );
   const [seletedSquare, setSeletedSquare] = useState<number | null>(null);
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
   const [possibleMoves, setPossibleMoves] = useState<number[]|null>(null);
 
   useEffect(() => {
     init().then(() => {
-      const possibleMoves = seletedSquare && possible_moves(seletedSquare, squareValue[seletedSquare], squareValue);
+      const possibleMoves = seletedSquare && possible_moves(seletedSquare, figureMap);
       setPossibleMoves(possibleMoves)
     })
   });
   const handleClick = (i:number, figure:IFigure|null) => {
-    const squares = squareValue.slice();
+    const newFigureMap = new Map<number, IFigure>(figureMap);
     let newSelectedSquare = null;
-    if (squares[i] !== null) {
+    if (figureMap.get(i)) {
       newSelectedSquare = (seletedSquare && seletedSquare === i) ? null : i;
-      console.log(`i:${i} figure:${figure?.color} kind:${figure?.kind} selSqare: ${newSelectedSquare}`)
+      console.log(seletedSquare);
+      console.log(seletedSquare && figureMap.get(seletedSquare));
       console.log(possibleMoves);
     }
 
     setSeletedSquare(newSelectedSquare);
-    setSqareValue(squares);
+    setFigureMap(newFigureMap);
   }
 
 
@@ -115,8 +101,8 @@ export default function Game() {
       <div className="game-board">
       <div className="status">{'Next player: ' + (whiteIsNext ? 'White' : 'Black')}</div>
         <Board 
-        squareValue={squareValue}
-        selectedSquare={seletedSquare}
+        figure={figureMap}
+        possibleMoves={possibleMoves}
         onClick={handleClick}
         />
       </div>
@@ -128,7 +114,17 @@ const isOnDarkDiag = (i:number) : boolean => {
   return [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11)
 }
 
-function calculateWinner(squares: any[]){
-  return null;
-}
+const getInitialFiguresState = () : Map<number, IFigure> => {
+  const map = new Map<number, IFigure>();
+  for (let i=0; i<100; ++i) {
+    if (isOnDarkDiag(i)) {
+      if (i < 30)
+        map.set(i, {color:'black', kind:'man'});
+      if (i >= 70)
+        map.set(i, {color:'white', kind:'man'});
+    }
+  }
+  return map;
+} 
+
 
