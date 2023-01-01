@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import init, { possible_moves } from "./pkg";
+import init, { IMove, possible_moves } from "./pkg";
 
 interface IFigure {
   color: "black" | "white";
@@ -33,7 +33,7 @@ function Square(props: ISquareProps) {
 
 interface IBoardProps {
   figure: Map<number, IFigure>;
-  possibleMoves: number[];
+  possibleMoves: IMove[];
   onClick: (squareNo: number, squareValue: IFigure | null) => void;
 }
 
@@ -51,7 +51,10 @@ function Board(props: IBoardProps) {
           value={figure}
           onClick={() => props.onClick(squareNo, figure)}
           color={
-            props.possibleMoves.includes(squareNo)
+            props.possibleMoves.includes({
+              squareNo: squareNo,
+              isCapture: false,
+            })
               ? "sandybrown"
               : backgroundColor
           }
@@ -73,7 +76,7 @@ export default function Game() {
   );
   const [selectedFigureNo, setSelectedFigureNo] = useState<number | null>(null);
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
-  const [possibleMoves, setPossibleMoves] = useState<number[]>([]);
+  const [possibleMoves, setPossibleMoves] = useState<IMove[]>([]);
 
   useEffect(() => {
     init().then(() => {
@@ -110,7 +113,10 @@ export default function Game() {
           ? null
           : clickedSquareNo
       );
-    } else if (selectedFigureNo && possibleMoves.includes(clickedSquareNo)) {
+    } else if (
+      selectedFigureNo &&
+      possibleMoves.includes({ squareNo: clickedSquareNo, isCapture: false })
+    ) {
       makeMove(selectedFigureNo, clickedSquareNo, figureMap);
     }
   };
