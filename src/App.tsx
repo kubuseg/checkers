@@ -1,143 +1,146 @@
-import React, { useEffect, useState } from 'react';
-import './App.css';
-import init, { add } from "rust-wasm-lib";
+import React, { useEffect, useState } from "react";
+import "./App.css";
+import init, { possible_moves } from "./pkg";
 
-interface IFigure { 
+interface IFigure {
   color: "black" | "white";
-  type: "man" | "king";
+  kind: "man" | "king";
 }
 
-function Figure(props: IFigure)
-{
-  return (
-    <div className="circle" style={{ backgroundColor: props.color}}/>
-  );
+function Figure(props: IFigure) {
+  return <div className="circle" style={{ backgroundColor: props.color }} />;
 }
 
 interface ISquareProps {
-  onClick: React.MouseEventHandler<HTMLButtonElement>; 
   value: IFigure | null;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
   color: string;
 }
 
-function Square(props: ISquareProps) 
-{
+function Square(props: ISquareProps) {
   return (
-    <button 
-    className="square"
-    style={{ backgroundColor: props.color}} 
-    onClick={props.onClick}>
-      {props.value && <Figure color={props.value.color} type={props.value.type} />}
+    <button
+      className="square"
+      style={{ backgroundColor: props.color }}
+      onClick={props.onClick}
+    >
+      {props.value && (
+        <Figure color={props.value.color} kind={props.value.kind} />
+      )}
     </button>
   );
 }
 
 interface IBoardProps {
-  squareValue: (IFigure | null)[];
-  selectedSquare: number | null;
-  onClick: (squareNo:number, squareValue:IFigure|null) => void;
+  figure: Map<number, IFigure>;
+  possibleMoves: number[];
+  onClick: (squareNo: number, squareValue: IFigure | null) => void;
 }
 
 function Board(props: IBoardProps) {
   const board = [];
-  for(let i = 0; i < 10; i++){
+  for (let i = 0; i < 10; i++) {
     const squareRows = [];
-    for(let j = 0; j < 10; j++){
-      const squareNo = i*10+j;
-      const backgroundColor = 
-      isOnDarkDiag(squareNo) ? "#693e3e" : "#ffd6ae";
-      const squareValue = props.squareValue[squareNo];
+    for (let j = 0; j < 10; j++) {
+      const squareNo = i * 10 + j;
+      const backgroundColor = isOnDarkDiag(squareNo) ? "#693e3e" : "#ffd6ae";
+      const figure = props.figure.get(squareNo) ?? null;
       squareRows.push(
         <Square
-        value={props.squareValue[squareNo]}
-        onClick={() => props.onClick(squareNo, squareValue)}
-        color={props.selectedSquare === squareNo ? 'sandybrown' : backgroundColor}
-      />
+          key={squareNo}
+          value={figure}
+          onClick={() => props.onClick(squareNo, figure)}
+          color={
+            props.possibleMoves.includes(squareNo)
+              ? "sandybrown"
+              : backgroundColor
+          }
+        />
       );
     }
-    board.push(<div className="board-row">{squareRows}</div>)
+    board.push(
+      <div key={i} className="board-row">
+        {squareRows}
+      </div>
+    );
   }
+  return <div>{board}</div>;
+}
 
+export default function Game() {
+  const [figureMap, setFigureMap] = useState<Map<number, IFigure>>(
+    getInitialFiguresState()
+  );
+  const [selectedFigureNo, setSelectedFigureNo] = useState<number | null>(null);
+  const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
+  const [possibleMoves, setPossibleMoves] = useState<number[]>([]);
+
+  useEffect(() => {
+    init().then(() => {
+      const possibleMoves = selectedFigureNo
+        ? possible_moves(selectedFigureNo, figureMap)
+        : [];
+      setPossibleMoves(possibleMoves);
+    });
+  }, [figureMap, selectedFigureNo]);
+
+  const makeMove = (
+    sourceSquareNo: number,
+    targetSquareNo: number,
+    figureMap: Map<number, IFigure>
+  ) => {
+    const sourceSqareFigure = figureMap.get(sourceSquareNo);
+    if (sourceSqareFigure) {
+      const newFigureMap = new Map<number, IFigure>(figureMap);
+      newFigureMap.delete(sourceSquareNo);
+      newFigureMap.set(targetSquareNo, sourceSqareFigure);
+      setFigureMap(newFigureMap);
+      setSelectedFigureNo(null);
+      setWhiteIsNext(!whiteIsNext);
+    }
+  };
+
+  const handleClick = (clickedSquareNo: number, figure: IFigure | null) => {
+    if (
+      figureMap.get(clickedSquareNo)?.color ===
+      (whiteIsNext ? "white" : "black")
+    ) {
+      setSelectedFigureNo(
+        selectedFigureNo && selectedFigureNo === clickedSquareNo
+          ? null
+          : clickedSquareNo
+      );
+    } else if (selectedFigureNo && possibleMoves.includes(clickedSquareNo)) {
+      makeMove(selectedFigureNo, clickedSquareNo, figureMap);
+    }
+  };
   return (
-    <div>
-      {board}
+    <div className="game">
+      <div className="game-board">
+        <div className="status">
+          {"Next player: " + (whiteIsNext ? "White" : "Black")}
+        </div>
+        <Board
+          figure={figureMap}
+          possibleMoves={possibleMoves}
+          onClick={handleClick}
+        />
+      </div>
     </div>
   );
 }
 
-interface IGameState {
-  squareValue: (IFigure | null)[];
-  seletedSquare: number | null;
-  whiteIsNext: boolean;
-}
+const isOnDarkDiag = (i: number): boolean => {
+  return [1, 3, 5, 7, 9].includes(Math.abs((i % 10) - Math.floor(i / 10)) % 11);
+};
 
-export default class Game extends React.Component<{}, IGameState> {
-  constructor(props : IGameState) {
-    super(props);
-    this.state = {
-      squareValue: Array(100).fill(null)
-      .map((val:(IFigure | null), i:number) => {
-          if (isOnDarkDiag(i)) {
-            if (i < 30)
-              return {color:'black', type:'man'};
-            if (i >= 70)
-              return {color:'white', type:'man'};
-          }
-          return null;
-      }),
-      seletedSquare: null,
-      whiteIsNext: true,
-    };
-
-  }
-
-  handleClick = (i:number, figure:IFigure|null) => {
-    const squares = this.state.squareValue.slice();
-    let selectedSquare = null;
-    if (squares[i] !== null) {
-      if (this.state.seletedSquare && this.state.seletedSquare === i)
-        selectedSquare = null;
-      else 
-        selectedSquare = i;
+const getInitialFiguresState = (): Map<number, IFigure> => {
+  const map = new Map<number, IFigure>();
+  for (let i = 0; i < 100; ++i) {
+    if (isOnDarkDiag(i)) {
+      if (i < 30) map.set(i, { color: "black", kind: "man" });
+      if (i >= 70) map.set(i, { color: "white", kind: "man" });
     }
-
-    this.setState({
-      squareValue: squares,
-      seletedSquare: selectedSquare,
-    });
   }
-
-  render() {
-    const winner = calculateWinner(this.state.squareValue);
-    let status;
-    if (winner)
-      status = 'Winner: ' + winner;
-    else
-      status = 'Next player: ' + (this.state.whiteIsNext ? 'White' : 'Black');
-    return (
-      <div className="game">
-        <div className="game-board">
-        <div className="status">{status}</div>
-          <Board 
-          squareValue={this.state.squareValue}
-          selectedSquare={this.state.seletedSquare}
-          onClick={this.handleClick}
-          />
-        </div>
-      </div>
-    );
-  }
-}
-
-const isOnDarkDiag = (i:number) : boolean => {
-  return [1, 3, 5, 7, 9].includes(Math.abs(i%10-Math.floor(i/10))%11)
-}
-
-
-function getPossibleMoves(square: any, figure: any){
-}
-
-function calculateWinner(squares: any[]){
-  return null;
-}
-
+  return map;
+};
