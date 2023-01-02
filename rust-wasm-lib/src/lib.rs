@@ -14,10 +14,10 @@ pub fn run() {
 }
 
 #[wasm_bindgen(typescript_custom_section)]
-const IMove: &'static str = r#"
-export interface IMove {
-    squareNo: number;
-    isCapture: boolean;
+const Move: &'static str = r#"
+export interface Move {
+    square_no: number;
+    is_capture: boolean;
 }
 "#;
 
@@ -36,57 +36,108 @@ pub struct IFigure {
 
 #[wasm_bindgen(typescript_custom_section)]
 const possible_moves: &'static str = r#"
-export function possible_moves(i: number, figure_map: Map<number, IFigure>): IMove[];
+export function possible_moves(clicked_sqare_no: number, figure_map: Map<number, IFigure>): IMove[];
 "#;
 
 #[wasm_bindgen(skip_typescript)]
-pub fn possible_moves(i: u8, figure_map: JsValue) -> Result<JsValue, JsError> {
+pub fn possible_moves(clicked_sqare_no: u8, figure_map: JsValue) -> Result<JsValue, JsError> {
     let figure_map: HashMap<u8, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
-    let source_figure: IFigure;
-    match figure_map.get(&i) {
-        Some(f) => source_figure = f.clone(),
-        None => source_figure = IFigure::default(),
+
+    let moved_figure: IFigure;
+    match figure_map.get(&clicked_sqare_no) {
+        Some(figure) => moved_figure = figure.clone(),
+        None => moved_figure = IFigure::default(),
     }
 
     let mut poss_moves: Vec<Move> = vec![];
-    if source_figure.color == "black" {
-        match i % 10 {
-            0 => add_poss_move(i, i + 11, &source_figure, &mut poss_moves, &figure_map),
-            9 => add_poss_move(i, i + 9, &source_figure, &mut poss_moves, &figure_map),
+    if moved_figure.color == "black" {
+        match clicked_sqare_no % 10 {
+            0 => try_add_poss_move(
+                clicked_sqare_no,
+                clicked_sqare_no + 11,
+                &moved_figure,
+                &mut poss_moves,
+                &figure_map,
+            ),
+            9 => try_add_poss_move(
+                clicked_sqare_no,
+                clicked_sqare_no + 9,
+                &moved_figure,
+                &mut poss_moves,
+                &figure_map,
+            ),
             _ => {
-                add_poss_move(i, i + 11, &source_figure, &mut poss_moves, &figure_map);
-                add_poss_move(i, i + 9, &source_figure, &mut poss_moves, &figure_map);
+                try_add_poss_move(
+                    clicked_sqare_no,
+                    clicked_sqare_no + 11,
+                    &moved_figure,
+                    &mut poss_moves,
+                    &figure_map,
+                );
+                try_add_poss_move(
+                    clicked_sqare_no,
+                    clicked_sqare_no + 9,
+                    &moved_figure,
+                    &mut poss_moves,
+                    &figure_map,
+                );
             }
         }
     } else {
-        match i % 10 {
-            0 => add_poss_move(i, i - 9, &source_figure, &mut poss_moves, &figure_map),
-            9 => add_poss_move(i, i - 11, &source_figure, &mut poss_moves, &figure_map),
+        match clicked_sqare_no % 10 {
+            0 => try_add_poss_move(
+                clicked_sqare_no,
+                clicked_sqare_no - 9,
+                &moved_figure,
+                &mut poss_moves,
+                &figure_map,
+            ),
+            9 => try_add_poss_move(
+                clicked_sqare_no,
+                clicked_sqare_no - 11,
+                &moved_figure,
+                &mut poss_moves,
+                &figure_map,
+            ),
             _ => {
-                add_poss_move(i, i - 9, &source_figure, &mut poss_moves, &figure_map);
-                add_poss_move(i, i - 11, &source_figure, &mut poss_moves, &figure_map);
+                try_add_poss_move(
+                    clicked_sqare_no,
+                    clicked_sqare_no - 9,
+                    &moved_figure,
+                    &mut poss_moves,
+                    &figure_map,
+                );
+                try_add_poss_move(
+                    clicked_sqare_no,
+                    clicked_sqare_no - 11,
+                    &moved_figure,
+                    &mut poss_moves,
+                    &figure_map,
+                );
             }
         }
     }
     Ok(serde_wasm_bindgen::to_value(&poss_moves)?)
 }
 
-fn add_poss_move(
-    source_figure_no: u8,
+fn try_add_poss_move(
+    moved_figure_no: u8,
     captured_figure_no: u8,
-    source_figure: &IFigure,
+    moved_figure: &IFigure,
     poss_moves: &mut Vec<Move>,
     figure_map: &HashMap<u8, IFigure>,
 ) {
-    match figure_map.get(&source_figure_no) {
-        Some(captured_figure) => try_capture(
-            source_figure_no,
-            captured_figure_no,
-            source_figure,
-            captured_figure,
-            poss_moves,
-            figure_map,
-        ),
+    match figure_map.get(&captured_figure_no) {
+        Some(captured_figure) => {
+            try_capture(
+                moved_figure_no,
+                captured_figure_no,
+                moved_figure,
+                captured_figure,
+                poss_moves,
+                figure_map,
+            );
+        }
         None => poss_moves.push(Move {
             square_no: captured_figure_no,
             is_capture: false,
@@ -95,15 +146,16 @@ fn add_poss_move(
 }
 
 fn try_capture(
-    source_figure_no: u8,
+    moved_figure_no: u8,
     captured_figure_no: u8,
-    source_figure: &IFigure,
+    moved_figure: &IFigure,
     captured_figure: &IFigure,
     poss_moves: &mut Vec<Move>,
     figure_map: &HashMap<u8, IFigure>,
 ) {
-    if source_figure.color != captured_figure.color {
-        let poss_block_figure_no = source_figure_no + 2 * (captured_figure_no - source_figure_no);
+    //Check if captured figure is the enemy and it isn't by the border
+    if moved_figure.color != captured_figure.color && !vec![0, 9].contains(&(captured_figure_no % 10)) {
+        let poss_block_figure_no = moved_figure_no + 2 * (captured_figure_no - moved_figure_no);
         match figure_map.get(&poss_block_figure_no) {
             Some(_) => (),
             None => poss_moves.push(Move {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import init, { IMove, possible_moves } from "./pkg";
+import init, { Move, possible_moves } from "./pkg";
 
 interface IFigure {
   color: "black" | "white";
@@ -32,8 +32,8 @@ function Square(props: ISquareProps) {
 }
 
 interface IBoardProps {
-  figure: Map<number, IFigure>;
-  possibleMoves: IMove[];
+  figureMap: Map<number, IFigure>;
+  possibleMoves: Move[];
   onClick: (squareNo: number, squareValue: IFigure | null) => void;
 }
 
@@ -44,17 +44,14 @@ function Board(props: IBoardProps) {
     for (let j = 0; j < 10; j++) {
       const squareNo = i * 10 + j;
       const backgroundColor = isOnDarkDiag(squareNo) ? "#693e3e" : "#ffd6ae";
-      const figure = props.figure.get(squareNo) ?? null;
+      const figure = props.figureMap.get(squareNo) ?? null;
       squareRows.push(
         <Square
           key={squareNo}
           value={figure}
           onClick={() => props.onClick(squareNo, figure)}
           color={
-            props.possibleMoves.includes({
-              squareNo: squareNo,
-              isCapture: false,
-            })
+            props.possibleMoves.some((move) => move.square_no === squareNo)
               ? "sandybrown"
               : backgroundColor
           }
@@ -76,7 +73,7 @@ export default function Game() {
   );
   const [selectedFigureNo, setSelectedFigureNo] = useState<number | null>(null);
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
-  const [possibleMoves, setPossibleMoves] = useState<IMove[]>([]);
+  const [possibleMoves, setPossibleMoves] = useState<Move[]>([]);
 
   useEffect(() => {
     init().then(() => {
@@ -88,22 +85,31 @@ export default function Game() {
   }, [figureMap, selectedFigureNo]);
 
   const makeMove = (
-    sourceSquareNo: number,
-    targetSquareNo: number,
+    move: Move,
+    movedFigureNo: number,
+    clickedSquareNo: number,
     figureMap: Map<number, IFigure>
   ) => {
-    const sourceSqareFigure = figureMap.get(sourceSquareNo);
-    if (sourceSqareFigure) {
-      const newFigureMap = new Map<number, IFigure>(figureMap);
-      newFigureMap.delete(sourceSquareNo);
-      newFigureMap.set(targetSquareNo, sourceSqareFigure);
-      setFigureMap(newFigureMap);
-      setSelectedFigureNo(null);
-      setWhiteIsNext(!whiteIsNext);
+    const sourceSqareFigure = figureMap.get(movedFigureNo);
+    if (!sourceSqareFigure) return;
+    const newFigureMap = new Map<number, IFigure>(figureMap);
+
+    newFigureMap.delete(movedFigureNo);
+    newFigureMap.set(clickedSquareNo, sourceSqareFigure);
+
+    if (move.is_capture) {
+      let capturedFigureNo =
+        movedFigureNo + (clickedSquareNo - movedFigureNo) / 2;
+      newFigureMap.delete(capturedFigureNo);
     }
+
+    setFigureMap(newFigureMap);
+    setSelectedFigureNo(null);
+    setWhiteIsNext(!whiteIsNext);
   };
 
   const handleClick = (clickedSquareNo: number, figure: IFigure | null) => {
+    let move = possibleMoves.find((move) => move.square_no === clickedSquareNo);
     if (
       figureMap.get(clickedSquareNo)?.color ===
       (whiteIsNext ? "white" : "black")
@@ -113,11 +119,8 @@ export default function Game() {
           ? null
           : clickedSquareNo
       );
-    } else if (
-      selectedFigureNo &&
-      possibleMoves.includes({ squareNo: clickedSquareNo, isCapture: false })
-    ) {
-      makeMove(selectedFigureNo, clickedSquareNo, figureMap);
+    } else if (selectedFigureNo && move) {
+      makeMove(move, selectedFigureNo, clickedSquareNo, figureMap);
     }
   };
   return (
@@ -127,7 +130,7 @@ export default function Game() {
           {"Next player: " + (whiteIsNext ? "White" : "Black")}
         </div>
         <Board
-          figure={figureMap}
+          figureMap={figureMap}
           possibleMoves={possibleMoves}
           onClick={handleClick}
         />
