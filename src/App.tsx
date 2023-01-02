@@ -90,22 +90,35 @@ export default function Game() {
     clickedSquareNo: number,
     figureMap: Map<number, IFigure>
   ) => {
-    const sourceSqareFigure = figureMap.get(movedFigureNo);
-    if (!sourceSqareFigure) return;
+    const movedFigure = figureMap.get(movedFigureNo);
+    if (!movedFigure) return;
     const newFigureMap = new Map<number, IFigure>(figureMap);
-
+    //Move selected figure
     newFigureMap.delete(movedFigureNo);
-    newFigureMap.set(clickedSquareNo, sourceSqareFigure);
+    newFigureMap.set(clickedSquareNo, movedFigure);
 
+    let multiCaptureScenario: boolean = false;
     if (move.is_capture) {
       let capturedFigureNo =
         movedFigureNo + (clickedSquareNo - movedFigureNo) / 2;
       newFigureMap.delete(capturedFigureNo);
-    }
 
+      //Check if multi-capture scenario isn't happening
+      if (
+        possible_moves(clickedSquareNo, figureMap).some(
+          (move) => move.is_capture === true
+        )
+      ) {
+        multiCaptureScenario = true;
+      }
+    }
+    if (multiCaptureScenario) {
+      setSelectedFigureNo(clickedSquareNo);
+    } else {
+      setSelectedFigureNo(null);
+      setWhiteIsNext(!whiteIsNext);
+    }
     setFigureMap(newFigureMap);
-    setSelectedFigureNo(null);
-    setWhiteIsNext(!whiteIsNext);
   };
 
   const handleClick = (clickedSquareNo: number, figure: IFigure | null) => {

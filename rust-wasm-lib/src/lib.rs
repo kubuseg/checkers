@@ -36,7 +36,7 @@ pub struct IFigure {
 
 #[wasm_bindgen(typescript_custom_section)]
 const possible_moves: &'static str = r#"
-export function possible_moves(clicked_sqare_no: number, figure_map: Map<number, IFigure>): IMove[];
+export function possible_moves(clicked_sqare_no: number, figure_map: Map<number, IFigure>): Move[];
 "#;
 
 #[wasm_bindgen(skip_typescript)]
@@ -154,7 +154,12 @@ fn try_capture(
     figure_map: &HashMap<u8, IFigure>,
 ) {
     //Check if captured figure is the enemy and it isn't by the border
-    if moved_figure.color != captured_figure.color && !vec![0, 9].contains(&(captured_figure_no % 10)) {
+    if moved_figure.color != captured_figure.color
+        && ![0, 9].contains(&(captured_figure_no % 10))
+        && !(0..10).contains(&captured_figure_no)
+        && !(90..100).contains(&captured_figure_no)
+    {
+        //Check for possible block
         let poss_block_figure_no = moved_figure_no + 2 * (captured_figure_no - moved_figure_no);
         match figure_map.get(&poss_block_figure_no) {
             Some(_) => (),
