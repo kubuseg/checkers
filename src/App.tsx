@@ -8,7 +8,11 @@ interface IFigure {
 }
 
 function Figure(props: IFigure) {
-  return <div className="circle" style={{ backgroundColor: props.color }} />;
+  return props.kind === "man" ? (
+    <div className="man" style={{ backgroundColor: props.color }} />
+  ) : (
+    <div className="king" style={{ backgroundColor: props.color }} />
+  );
 }
 
 interface ISquareProps {
@@ -76,52 +80,53 @@ export default function Game() {
   const [possibleMoves, setPossibleMoves] = useState<Move[]>([]);
 
   useEffect(() => {
-    init().then(() => {
-      const possibleMoves = selectedFigureNo
-        ? possible_moves(selectedFigureNo, figureMap)
-        : [];
-      setPossibleMoves(possibleMoves);
-    });
+    init();
+  });
+
+  useEffect(() => {
+    const possibleMoves = selectedFigureNo
+      ? possible_moves(selectedFigureNo, figureMap)
+      : [];
+    setPossibleMoves(possibleMoves);
   }, [figureMap, selectedFigureNo]);
 
   const makeMove = (
     move: Move,
     movedFigureNo: number,
-    clickedSquareNo: number,
     figureMap: Map<number, IFigure>
-  ) => {
+  ): [boolean, IFigure, Map<number, IFigure>] => {
     const movedFigure = figureMap.get(movedFigureNo);
-    if (!movedFigure) return;
+    if (!movedFigure)
+      return [
+        false,
+        { kind: "man", color: "white" },
+        new Map<number, IFigure>(),
+      ];
     const newFigureMap = new Map<number, IFigure>(figureMap);
+
     //Move selected figure
     newFigureMap.delete(movedFigureNo);
-    newFigureMap.set(clickedSquareNo, movedFigure);
+    newFigureMap.set(move.square_no, movedFigure);
 
-    let multiCaptureScenario: boolean = false;
+    let isMultiCaptureScenario: boolean = false;
     if (move.is_capture) {
+      //Calculate position of captured figure
       let capturedFigureNo =
-        movedFigureNo + (clickedSquareNo - movedFigureNo) / 2;
+        movedFigureNo + (move.square_no - movedFigureNo) / 2;
+      //Delete captured figure
       newFigureMap.delete(capturedFigureNo);
-
       //Check if multi-capture scenario isn't happening
-      if (
-        possible_moves(clickedSquareNo, figureMap).some(
-          (move) => move.is_capture === true
-        )
-      ) {
-        multiCaptureScenario = true;
-      }
+      isMultiCaptureScenario = possible_moves(move.square_no, figureMap).some(
+        (move) => move.is_capture === true
+      );
     }
-    if (multiCaptureScenario) {
-      setSelectedFigureNo(clickedSquareNo);
-    } else {
-      setSelectedFigureNo(null);
-      setWhiteIsNext(!whiteIsNext);
-    }
-    setFigureMap(newFigureMap);
+    return [isMultiCaptureScenario, movedFigure, newFigureMap];
   };
 
-  const handleClick = (clickedSquareNo: number, figure: IFigure | null) => {
+  const handleClick = (
+    clickedSquareNo: number,
+    clickedSqareFigure: IFigure | null
+  ) => {
     let move = possibleMoves.find((move) => move.square_no === clickedSquareNo);
     if (
       figureMap.get(clickedSquareNo)?.color ===
@@ -133,9 +138,27 @@ export default function Game() {
           : clickedSquareNo
       );
     } else if (selectedFigureNo && move) {
-      makeMove(move, selectedFigureNo, clickedSquareNo, figureMap);
+      let [isMultiCaptureScenario, movedFigure, newFigureMap] = makeMove(
+        move,
+        selectedFigureNo,
+        figureMap
+      );
+      if (isMultiCaptureScenario) {
+        setSelectedFigureNo(clickedSquareNo);
+      } else {
+        setSelectedFigureNo(null);
+        setWhiteIsNext(!whiteIsNext);
+        if (becomesKing(move.square_no, movedFigure)) {
+          newFigureMap.set(move.square_no, {
+            kind: "king",
+            color: movedFigure.color,
+          });
+        }
+      }
+      setFigureMap(newFigureMap);
     }
   };
+
   return (
     <div className="game">
       <div className="game-board">
@@ -156,12 +179,19 @@ const isOnDarkDiag = (i: number): boolean => {
   return [1, 3, 5, 7, 9].includes(Math.abs((i % 10) - Math.floor(i / 10)) % 11);
 };
 
+const becomesKing = (sqareNo: number, figure: IFigure): boolean => {
+  if (figure.kind === "king") return false;
+  return figure.color === "black"
+    ? [...Array(10)].map((i) => i + 90).includes(sqareNo)
+    : [...Array(10)].includes(sqareNo);
+};
+
 const getInitialFiguresState = (): Map<number, IFigure> => {
   const map = new Map<number, IFigure>();
   for (let i = 0; i < 100; ++i) {
     if (isOnDarkDiag(i)) {
-      if (i < 30) map.set(i, { color: "black", kind: "man" });
-      if (i >= 70) map.set(i, { color: "white", kind: "man" });
+      if (i < 40) map.set(i, { color: "black", kind: "man" });
+      if (i >= 60) map.set(i, { color: "white", kind: "man" });
     }
   }
   return map;

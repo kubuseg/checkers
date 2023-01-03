@@ -24,7 +24,7 @@ export interface Move {
 #[wasm_bindgen(skip_typescript)]
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Move {
-    square_no: u8,
+    square_no: i32,
     is_capture: bool,
 }
 
@@ -40,8 +40,8 @@ export function possible_moves(clicked_sqare_no: number, figure_map: Map<number,
 "#;
 
 #[wasm_bindgen(skip_typescript)]
-pub fn possible_moves(clicked_sqare_no: u8, figure_map: JsValue) -> Result<JsValue, JsError> {
-    let figure_map: HashMap<u8, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+pub fn possible_moves(clicked_sqare_no: i32, figure_map: JsValue) -> Result<JsValue, JsError> {
+    let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
 
     let moved_figure: IFigure;
     match figure_map.get(&clicked_sqare_no) {
@@ -121,11 +121,11 @@ pub fn possible_moves(clicked_sqare_no: u8, figure_map: JsValue) -> Result<JsVal
 }
 
 fn try_add_poss_move(
-    moved_figure_no: u8,
-    captured_figure_no: u8,
+    moved_figure_no: i32,
+    captured_figure_no: i32,
     moved_figure: &IFigure,
     poss_moves: &mut Vec<Move>,
-    figure_map: &HashMap<u8, IFigure>,
+    figure_map: &HashMap<i32, IFigure>,
 ) {
     match figure_map.get(&captured_figure_no) {
         Some(captured_figure) => {
@@ -143,15 +143,49 @@ fn try_add_poss_move(
             is_capture: false,
         }),
     }
+    let backwards_figure_no = if (&moved_figure).color == "black" {
+        captured_figure_no - 20
+    } else {
+        captured_figure_no + 20
+    };
+    try_add_poss_move_backwards(
+        moved_figure_no,
+        backwards_figure_no,
+        moved_figure,
+        poss_moves,
+        figure_map,
+    );
+}
+
+fn try_add_poss_move_backwards(
+    moved_figure_no: i32,
+    captured_figure_no: i32,
+    moved_figure: &IFigure,
+    poss_moves: &mut Vec<Move>,
+    figure_map: &HashMap<i32, IFigure>,
+) {
+    match figure_map.get(&captured_figure_no) {
+        Some(captured_figure) => {
+            try_capture(
+                moved_figure_no,
+                captured_figure_no,
+                moved_figure,
+                captured_figure,
+                poss_moves,
+                figure_map,
+            );
+        }
+        None => (),
+    }
 }
 
 fn try_capture(
-    moved_figure_no: u8,
-    captured_figure_no: u8,
+    moved_figure_no: i32,
+    captured_figure_no: i32,
     moved_figure: &IFigure,
     captured_figure: &IFigure,
     poss_moves: &mut Vec<Move>,
-    figure_map: &HashMap<u8, IFigure>,
+    figure_map: &HashMap<i32, IFigure>,
 ) {
     //Check if captured figure is the enemy and it isn't by the border
     if moved_figure.color != captured_figure.color
