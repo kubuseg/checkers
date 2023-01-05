@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import init, { Move, possible_moves } from "./pkg";
+import blackCrown from "./blackCrown.svg";
+import whiteCrown from "./whiteCrown.svg";
 
 interface IFigure {
   color: "black" | "white";
@@ -8,10 +10,16 @@ interface IFigure {
 }
 
 function Figure(props: IFigure) {
-  return props.kind === "man" ? (
-    <div className="man" style={{ backgroundColor: props.color }} />
-  ) : (
-    <div className="king" style={{ backgroundColor: props.color }} />
+  return (
+    <div className="figure" style={{ backgroundColor: props.color }}>
+      {props.kind === "king" && (
+        <img
+          src={props.color === "black" ? whiteCrown : blackCrown}
+          alt="crown"
+          className="crown"
+        />
+      )}
+    </div>
   );
 }
 
@@ -182,8 +190,8 @@ const isOnDarkDiag = (i: number): boolean => {
 const becomesKing = (sqareNo: number, figure: IFigure): boolean => {
   if (figure.kind === "king") return false;
   return figure.color === "black"
-    ? [...Array(10)].map((i) => i + 90).includes(sqareNo)
-    : [...Array(10)].includes(sqareNo);
+    ? [...Array(10).keys()].map((i) => i + 90).includes(sqareNo)
+    : [...Array(10).keys()].includes(sqareNo);
 };
 
 const getInitialFiguresState = (): Map<number, IFigure> => {

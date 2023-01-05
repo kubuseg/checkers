@@ -1,4 +1,4 @@
-.man {
+.figure {
   display: flex;
   width: 40px;
   height: 40px;
@@ -7,11 +7,6 @@
   border: 1px inset snow;
 }
 
-.king {
-  display: flex;
-  width: 40px;
-  height: 40px;
-  margin: auto;
-  border-radius: 50%;
-  border: 1px inset snow;
+.crown {
+  transform: scale(0.55);
 }
