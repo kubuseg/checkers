@@ -117,14 +117,11 @@ export default function Game() {
     newFigureMap.set(move.square_no, movedFigure);
 
     let isMultiCaptureScenario: boolean = false;
-    if (move.is_capture) {
-      //Calculate position of captured figure
-      let capturedFigureNo =
-        movedFigureNo + (move.square_no - movedFigureNo) / 2;
+    if (move.is_capture && move.captured_figure_no) {
       //Delete captured figure
-      newFigureMap.delete(capturedFigureNo);
+      newFigureMap.delete(move.captured_figure_no);
       //Check if multi-capture scenario isn't happening
-      isMultiCaptureScenario = possible_moves(move.square_no, figureMap).some(
+      isMultiCaptureScenario = possible_moves(move.square_no, newFigureMap).some(
         (move) => move.is_capture === true
       );
     }
