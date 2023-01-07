@@ -81,7 +81,7 @@ trait GetMoves {
         match figure_map.get(&target_sqare_no) {
             Some(captured_figure) => {
                 Self::try_capture(
-                    &self,
+                    self,
                     target_sqare_no,
                     captured_figure,
                     poss_moves,
@@ -105,12 +105,10 @@ trait GetMoves {
             } else {
                 Direction::LeftDown
             }
+        } else if diff % 11 == 0 {
+            Direction::LeftUp
         } else {
-            if diff % 11 == 0 {
-                Direction::LeftUp
-            } else {
-                Direction::RightUp
-            }
+            Direction::RightUp
         }
     }
 
@@ -131,7 +129,7 @@ trait GetMoves {
             //Check for possible block
             let poss_block_figure_no =
                 captured_figure_no + self.get_capture_direction(captured_figure_no) as i32;
-            if let None = figure_map.get(&poss_block_figure_no) {
+            if figure_map.get(&poss_block_figure_no).is_none() {
                 poss_moves.push(Move {
                     moved_figure_no: *self.get_figure_no(),
                     square_no: poss_block_figure_no,
@@ -165,9 +163,9 @@ impl GetMoves for King {
         for moves in moves_array {
             for target_sqare_no in moves {
                 let len_before = poss_moves.len();
-                Self::add_poss_move_forward(&self, target_sqare_no, &mut poss_moves, figure_map);
+                Self::add_poss_move_forward(self, target_sqare_no, &mut poss_moves, figure_map);
                 let is_capture = match poss_moves.last() {
-                    Some(figure) => figure.is_capture == true,
+                    Some(figure) => figure.is_capture,
                     None => false,
                 };
                 if poss_moves.len() == len_before || is_capture {
@@ -175,7 +173,7 @@ impl GetMoves for King {
                 }
             }
         }
-        return poss_moves;
+        poss_moves
     }
 
     fn get_target_sqares(&self) -> Vec<Vec<i32>> {
@@ -187,7 +185,7 @@ impl GetMoves for King {
         let right_down = Self::get_target_sqares_by_direction(self, right_down_moves, 11, false);
         let left_down_moves = cmp::min(self.figure_no % 10, 9 - self.figure_no / 10);
         let left_down = Self::get_target_sqares_by_direction(self, left_down_moves, 9, false);
-        return vec![right_up, right_down, left_up, left_down];
+        vec![right_up, right_down, left_up, left_down]
     }
 }
 
@@ -203,7 +201,7 @@ impl King {
                 moves.push(self.figure_no + mov * step)
             }
         }
-        return moves;
+        moves
     }
 }
 
@@ -246,7 +244,7 @@ impl GetMoves for Man {
             Self::add_poss_move_backwards(self, *target_sqare_no, &mut poss_moves, figure_map);
         }
 
-        return poss_moves;
+        poss_moves
     }
 
     fn get_target_sqares(&self) -> Vec<Vec<i32>> {
@@ -274,7 +272,7 @@ impl GetMoves for Man {
                 *sqare_no -= 20;
             }
         }
-        return vec![target_sqares_forward, target_sqares_backward];
+        vec![target_sqares_forward, target_sqares_backward]
     }
 }
 
@@ -287,7 +285,7 @@ impl Man {
     ) {
         if let Some(captured_figure) = figure_map.get(&captured_figure_no) {
             Self::try_capture(
-                &self,
+                self,
                 captured_figure_no,
                 captured_figure,
                 poss_moves,
@@ -302,14 +300,13 @@ fn get_poss_moves(
     moved_figure: &IFigure,
     figure_map: &HashMap<i32, IFigure>,
 ) -> Vec<Move> {
-    let poss_moves: Vec<Move>;
-    if moved_figure.kind == "man" {
+    let poss_moves: Vec<Move> = if moved_figure.kind == "man" {
         let man = Man::new(moved_figure_no, (*moved_figure).clone());
-        poss_moves = man.get_poss_moves(&figure_map);
+        man.get_poss_moves(figure_map)
     } else {
         let king = King::new(moved_figure_no, (*moved_figure).clone());
-        poss_moves = king.get_poss_moves(&figure_map);
-    }
+        king.get_poss_moves(figure_map)
+    };
     poss_moves
 }
 
@@ -350,7 +347,7 @@ export function get_winner(figure_map: Map<number, IFigure>): Color?;
 pub fn get_winner(figure_map: JsValue) -> Result<JsValue, JsError> {
     let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
     let mut result: Option<Color> = None;
-    for color in vec!["black", "white"] {
+    for color in ["black", "white"] {
         let any_poss_moves = figure_map
             .iter()
             .filter(|&(_, figure)| figure.color == color)
@@ -440,11 +437,11 @@ fn get_forced_moves(
         .max_by_key(|(depth, _)| depth)
         .unwrap_or(&(i32::MIN, Move::default()))
         .0;
-    let mut max_depth_moves:Vec<Move> = vec![];
+    let mut max_depth_moves: Vec<Move> = vec![];
     for (_, mov) in tree_depths.iter().filter(|(depth, _)| *depth == max_depth) {
         max_depth_moves.push((*mov).clone());
     }
-    return (max_depth + 1, max_depth_moves);
+    (max_depth + 1, max_depth_moves)
 }
 
 #[cfg(test)]
