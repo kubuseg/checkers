@@ -224,8 +224,8 @@ const getInitialFiguresState = (): Map<number, IFigure> => {
   const map = new Map<number, IFigure>();
   for (let i = 0; i < 100; ++i) {
     if (isOnDarkDiag(i)) {
-      if (i < 30) map.set(i, { color: "black", kind: "man" });
-      if (i >= 70) map.set(i, { color: "white", kind: "man" });
+      if (i < 40) map.set(i, { color: "black", kind: "man" });
+      if (i >= 60) map.set(i, { color: "white", kind: "man" });
     }
   }
   return map;
