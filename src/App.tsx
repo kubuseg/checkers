@@ -93,6 +93,7 @@ export default function Game() {
   const [selectedFigureNo, setSelectedFigureNo] = useState<number | null>(null);
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
   const [possibleMoves, setPossibleMoves] = useState<Move[]>([]);
+  const [winner, setWinner] = useState<Color | null>(null);
 
   // useEffect(() => {
   //   init();
@@ -109,9 +110,7 @@ export default function Game() {
       if (forcedMoves.length)
         setPossibleMoves(
           possibleMoves.filter((move) =>
-            forcedMoves.some(
-              (fMove) => lodash.isEqual(fMove, move)
-            )
+            forcedMoves.some((fMove) => lodash.isEqual(fMove, move))
           )
         );
       else setPossibleMoves(possibleMoves);
@@ -149,10 +148,20 @@ export default function Game() {
     return [isMultiCaptureScenario, movedFigure, newFigureMap];
   };
 
+  useEffect(() => {
+    init().then(() => {
+    let winner = get_winner(figureMap);
+    setWinner(winner);
+    });
+  }, [figureMap]);
+
   const handleClick = (
     clickedSquareNo: number,
     clickedSqareFigure: IFigure | null
   ) => {
+    if (winner) {
+      return;
+    }
     if (
       figureMap.get(clickedSquareNo)?.color ===
       (whiteIsNext ? "white" : "black")
@@ -183,21 +192,17 @@ export default function Game() {
           });
         }
       }
-      // console.log(get_winner(newFigureMap) ?? "No winner!")
       setFigureMap(newFigureMap);
     }
-    //console.log(clickedSquareNo);
-    console.log(
-      forced_moves(whiteIsNext ? Color.White : Color.Black, figureMap)
-    );
-    // console.log(figureMap.get(clickedSquareNo));
   };
 
   return (
     <div className="game">
       <div className="game-board">
         <div className="status">
-          {"Next player: " + (whiteIsNext ? "White" : "Black")}
+          {winner
+            ? `The winner is ${winner}!`
+            : "Next player: " + (whiteIsNext ? "White" : "Black")}
         </div>
         <Board
           figureMap={figureMap}
