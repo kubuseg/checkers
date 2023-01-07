@@ -400,7 +400,6 @@ pub fn forced_moves(color: Color, figure_map: JsValue) -> Result<JsValue, JsErro
     let (_depth, mut moves) = get_forced_moves(&capture_moves, &figure_map);
     //Reverse because forced moves returns moves in backward order
     moves.reverse();
-    let duration = start.elapsed();
     Ok(serde_wasm_bindgen::to_value(&moves)?)
 }
 
@@ -412,7 +411,7 @@ fn get_forced_moves(
         return (0, vec![]);
     }
 
-    let mut tree_depths: Vec<(i32, Vec<Move>)> = vec![];
+    let mut tree_depths: Vec<(i32, Move)> = vec![];
     for mov in capture_moves {
         let mut new_figure_map = figure_map.clone();
 
@@ -430,17 +429,22 @@ fn get_forced_moves(
                     .filter(|mov| mov.is_capture)
                     .collect();
             //Recursivly get depth and moves
-            let (depth, mut moves) = get_forced_moves(&new_capture_moves, &new_figure_map);
+            let (depth, _) = get_forced_moves(&new_capture_moves, &new_figure_map);
             //Add current move
-            moves.push((*mov).clone());
-            tree_depths.push((depth, moves));
+            tree_depths.push((depth, (*mov).clone()));
         }
     }
 
-    if let Some((max_depth, mov)) = tree_depths.iter().max_by(|x, y| x.0.cmp(&y.0)) {
-        return (*max_depth + 1, (*mov).clone());
+    let max_depth = tree_depths
+        .iter()
+        .max_by_key(|(depth, _)| depth)
+        .unwrap_or(&(i32::MIN, Move::default()))
+        .0;
+    let mut max_depth_moves:Vec<Move> = vec![];
+    for (_, mov) in tree_depths.iter().filter(|(depth, _)| *depth == max_depth) {
+        max_depth_moves.push((*mov).clone());
     }
-    return (0, vec![]);
+    return (max_depth + 1, max_depth_moves);
 }
 
 #[cfg(test)]

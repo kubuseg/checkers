@@ -9,6 +9,7 @@ import init, {
 import blackCrown from "./blackCrown.svg";
 import whiteCrown from "./whiteCrown.svg";
 import { Color } from "./pkg/rust_wasm_lib";
+import * as lodash from "lodash";
 
 interface IFigure {
   color: "black" | "white";
@@ -105,7 +106,14 @@ export default function Game() {
       const forcedMoves = selectedFigureNo
         ? forced_moves(whiteIsNext ? Color.White : Color.Black, figureMap)
         : [];
-      if (forcedMoves.length) setPossibleMoves([forcedMoves[0]]);
+      if (forcedMoves.length)
+        setPossibleMoves(
+          possibleMoves.filter((move) =>
+            forcedMoves.some(
+              (fMove) => lodash.isEqual(fMove, move)
+            )
+          )
+        );
       else setPossibleMoves(possibleMoves);
     });
   }, [figureMap, selectedFigureNo, whiteIsNext]);
