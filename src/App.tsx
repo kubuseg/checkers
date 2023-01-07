@@ -199,7 +199,7 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <div className="status">
+        <div className="status" style={{ color: whiteIsNext ? "white" : "black" }}>
           {winner
             ? `The winner is ${winner}!`
             : "Next player: " + (whiteIsNext ? "White" : "Black")}
