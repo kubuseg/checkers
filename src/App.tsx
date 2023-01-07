@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import init, { Move, possible_moves } from "./pkg";
+import init, {
+  Move,
+  possible_moves,
+  get_winner,
+  forced_moves,
+} from "./pkg/rust_wasm_lib";
 import blackCrown from "./blackCrown.svg";
 import whiteCrown from "./whiteCrown.svg";
+import { Color } from "./pkg/rust_wasm_lib";
 
 interface IFigure {
   color: "black" | "white";
@@ -87,16 +93,22 @@ export default function Game() {
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
   const [possibleMoves, setPossibleMoves] = useState<Move[]>([]);
 
-  useEffect(() => {
-    init();
-  });
+  // useEffect(() => {
+  //   init();
+  // });
 
   useEffect(() => {
-    const possibleMoves = selectedFigureNo
-      ? possible_moves(selectedFigureNo, figureMap)
-      : [];
-    setPossibleMoves(possibleMoves);
-  }, [figureMap, selectedFigureNo]);
+    init().then(() => {
+      const possibleMoves = selectedFigureNo
+        ? possible_moves(selectedFigureNo, figureMap)
+        : [];
+      const forcedMoves = selectedFigureNo
+        ? forced_moves(whiteIsNext ? Color.White : Color.Black, figureMap)
+        : [];
+      if (forcedMoves.length) setPossibleMoves([forcedMoves[0]]);
+      else setPossibleMoves(possibleMoves);
+    });
+  }, [figureMap, selectedFigureNo, whiteIsNext]);
 
   const makeMove = (
     move: Move,
@@ -121,9 +133,10 @@ export default function Game() {
       //Delete captured figure
       newFigureMap.delete(move.captured_figure_no);
       //Check if multi-capture scenario isn't happening
-      isMultiCaptureScenario = possible_moves(move.square_no, newFigureMap).some(
-        (move) => move.is_capture === true
-      );
+      isMultiCaptureScenario = possible_moves(
+        move.square_no,
+        newFigureMap
+      ).some((move) => move.is_capture === true);
     }
     return [isMultiCaptureScenario, movedFigure, newFigureMap];
   };
@@ -132,7 +145,6 @@ export default function Game() {
     clickedSquareNo: number,
     clickedSqareFigure: IFigure | null
   ) => {
-    let move = possibleMoves.find((move) => move.square_no === clickedSquareNo);
     if (
       figureMap.get(clickedSquareNo)?.color ===
       (whiteIsNext ? "white" : "black")
@@ -142,7 +154,10 @@ export default function Game() {
           ? null
           : clickedSquareNo
       );
-    } else if (selectedFigureNo && move) {
+    }
+
+    let move = possibleMoves.find((move) => move.square_no === clickedSquareNo);
+    if (selectedFigureNo && move) {
       let [isMultiCaptureScenario, movedFigure, newFigureMap] = makeMove(
         move,
         selectedFigureNo,
@@ -160,8 +175,14 @@ export default function Game() {
           });
         }
       }
+      // console.log(get_winner(newFigureMap) ?? "No winner!")
       setFigureMap(newFigureMap);
     }
+    //console.log(clickedSquareNo);
+    console.log(
+      forced_moves(whiteIsNext ? Color.White : Color.Black, figureMap)
+    );
+    // console.log(figureMap.get(clickedSquareNo));
   };
 
   return (
@@ -195,8 +216,8 @@ const getInitialFiguresState = (): Map<number, IFigure> => {
   const map = new Map<number, IFigure>();
   for (let i = 0; i < 100; ++i) {
     if (isOnDarkDiag(i)) {
-      if (i < 40) map.set(i, { color: "black", kind: "man" });
-      if (i >= 60) map.set(i, { color: "white", kind: "man" });
+      if (i < 30) map.set(i, { color: "black", kind: "man" });
+      if (i >= 70) map.set(i, { color: "white", kind: "man" });
     }
   }
   return map;

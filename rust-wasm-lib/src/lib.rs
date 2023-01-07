@@ -1,3 +1,4 @@
+use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::{collections::HashMap, vec};
@@ -17,6 +18,7 @@ pub fn run() {
 #[wasm_bindgen(typescript_custom_section)]
 const Move: &'static str = r#"
 export interface Move {
+    moved_figure_no: number,
     square_no: number;
     is_capture: boolean;
     captured_figure_no?: number;
@@ -26,9 +28,20 @@ export interface Move {
 #[wasm_bindgen(skip_typescript)]
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct Move {
+    moved_figure_no: i32,
     square_no: i32,
     is_capture: bool,
-    captured_figure_no:Option<i32>,
+    captured_figure_no: Option<i32>,
+}
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(moved_no:{}, sqare_no:{}, is_cap:{})",
+            self.moved_figure_no, self.square_no, self.is_capture
+        )
+    }
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -47,13 +60,8 @@ enum Direction {
     RightUp = -9,
     RightDown = 11,
     LeftUp = -11,
-    LeftDown = 9, 
+    LeftDown = 9,
 }
-
-#[wasm_bindgen(typescript_custom_section)]
-const possible_moves: &'static str = r#"
-export function possible_moves(clicked_sqare_no: number, figure_map: Map<number, IFigure>): Move[];
-"#;
 
 trait GetMoves {
     fn new(figure_no: i32, figure: IFigure) -> Self;
@@ -81,9 +89,10 @@ trait GetMoves {
                 );
             }
             None => poss_moves.push(Move {
+                moved_figure_no: *self.get_figure_no(),
                 square_no: target_sqare_no,
                 is_capture: false,
-                captured_figure_no: None
+                captured_figure_no: None,
             }),
         }
     }
@@ -124,9 +133,10 @@ trait GetMoves {
                 captured_figure_no + self.get_capture_direction(captured_figure_no) as i32;
             if let None = figure_map.get(&poss_block_figure_no) {
                 poss_moves.push(Move {
+                    moved_figure_no: *self.get_figure_no(),
                     square_no: poss_block_figure_no,
                     is_capture: true,
-                    captured_figure_no: Some(captured_figure_no)
+                    captured_figure_no: Some(captured_figure_no),
                 });
             }
         }
@@ -255,7 +265,7 @@ impl GetMoves for Man {
             }
         }
         let mut target_sqares_backward = target_sqares_forward.clone();
-        if self.figure.color == "black" {
+        if self.figure.color == "white" {
             for sqare_no in &mut target_sqares_backward {
                 *sqare_no += 20;
             }
@@ -287,6 +297,27 @@ impl Man {
     }
 }
 
+fn get_poss_moves(
+    moved_figure_no: i32,
+    moved_figure: &IFigure,
+    figure_map: &HashMap<i32, IFigure>,
+) -> Vec<Move> {
+    let poss_moves: Vec<Move>;
+    if moved_figure.kind == "man" {
+        let man = Man::new(moved_figure_no, (*moved_figure).clone());
+        poss_moves = man.get_poss_moves(&figure_map);
+    } else {
+        let king = King::new(moved_figure_no, (*moved_figure).clone());
+        poss_moves = king.get_poss_moves(&figure_map);
+    }
+    poss_moves
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const possible_moves: &'static str = r#"
+export function possible_moves(clicked_sqare_no: number, figure_map: Map<number, IFigure>): Move[];
+"#;
+
 #[wasm_bindgen(skip_typescript)]
 pub fn possible_moves(moved_figure_no: i32, figure_map: JsValue) -> Result<JsValue, JsError> {
     let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
@@ -298,16 +329,118 @@ pub fn possible_moves(moved_figure_no: i32, figure_map: JsValue) -> Result<JsVal
         moved_figure = IFigure::default()
     }
 
-    let poss_moves: Vec<Move>;
-    if moved_figure.kind == "man" {
-        let man = Man::new(moved_figure_no, moved_figure);
-        poss_moves = man.get_poss_moves(&figure_map);
-    } else {
-        let king = King::new(moved_figure_no, moved_figure);
-        poss_moves = king.get_poss_moves(&figure_map);
-    }
+    let poss_moves = get_poss_moves(moved_figure_no, &moved_figure, &figure_map);
 
     Ok(serde_wasm_bindgen::to_value(&poss_moves)?)
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum Color {
+    Black,
+    White,
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const possible_moves: &'static str = r#"
+export function get_winner(figure_map: Map<number, IFigure>): Color?;
+"#;
+
+#[wasm_bindgen(skip_typescript)]
+pub fn get_winner(figure_map: JsValue) -> Result<JsValue, JsError> {
+    let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+    let mut result: Option<Color> = None;
+    for color in vec!["black", "white"] {
+        let any_poss_moves = figure_map
+            .iter()
+            .filter(|&(_, figure)| figure.color == color)
+            .any(|(figure_no, figure)| {
+                let poss_moves = get_poss_moves(*figure_no, figure, &figure_map);
+                !poss_moves.is_empty()
+            });
+        let any_figure = figure_map.iter().any(|(_, figure)| figure.color == color);
+        if !any_poss_moves || !any_figure {
+            if color == "black" {
+                result = Some(Color::White);
+            } else {
+                result = Some(Color::Black);
+            };
+        }
+    }
+    Ok(serde_wasm_bindgen::to_value(&result)?)
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const possible_moves: &'static str = r#"
+export function forced_moves(color: Color, figure_map: Map<number, IFigure>): Move[];
+"#;
+
+#[wasm_bindgen(skip_typescript)]
+pub fn forced_moves(color: Color, figure_map: JsValue) -> Result<JsValue, JsError> {
+    let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+
+    //Get moves for color
+    let figures = figure_map.iter().filter(|&(_, figure)| {
+        figure.color
+            == match color {
+                Color::White => "white",
+                Color::Black => "black",
+            }
+    });
+    let mut capture_moves: Vec<Move> = vec![];
+    for (figure_no, figure) in figures {
+        let moves: Vec<Move> = get_poss_moves(*figure_no, figure, &figure_map)
+            .into_iter()
+            .filter(|mov| mov.is_capture)
+            .collect();
+        for mov in moves {
+            capture_moves.push(mov);
+        }
+    }
+    let (_depth, mut moves) = get_forced_moves(&capture_moves, &figure_map);
+    //Reverse because forced moves returns moves in backward order
+    moves.reverse();
+    let duration = start.elapsed();
+    Ok(serde_wasm_bindgen::to_value(&moves)?)
+}
+
+fn get_forced_moves(
+    capture_moves: &Vec<Move>,
+    figure_map: &HashMap<i32, IFigure>,
+) -> (i32, Vec<Move>) {
+    if capture_moves.is_empty() {
+        return (0, vec![]);
+    }
+
+    let mut tree_depths: Vec<(i32, Vec<Move>)> = vec![];
+    for mov in capture_moves {
+        let mut new_figure_map = figure_map.clone();
+
+        if let Some(moved_figure) = figure_map.get(&mov.moved_figure_no) {
+            //Making the move
+            new_figure_map.remove(&mov.moved_figure_no);
+            new_figure_map.insert(mov.square_no, (*moved_figure).clone());
+            if let Some(captured_figure_no) = mov.captured_figure_no {
+                new_figure_map.remove(&captured_figure_no);
+            }
+            //Geting new moves, moved figure doesn't change
+            let new_capture_moves: Vec<Move> =
+                get_poss_moves(mov.square_no, moved_figure, &new_figure_map)
+                    .into_iter()
+                    .filter(|mov| mov.is_capture)
+                    .collect();
+            //Recursivly get depth and moves
+            let (depth, mut moves) = get_forced_moves(&new_capture_moves, &new_figure_map);
+            //Add current move
+            moves.push((*mov).clone());
+            tree_depths.push((depth, moves));
+        }
+    }
+
+    if let Some((max_depth, mov)) = tree_depths.iter().max_by(|x, y| x.0.cmp(&y.0)) {
+        return (*max_depth + 1, (*mov).clone());
+    }
+    return (0, vec![]);
 }
 
 #[cfg(test)]
