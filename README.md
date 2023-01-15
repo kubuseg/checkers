@@ -98,3 +98,31 @@ Dla rust:
 Dla typesript:
 `npx typedoc src/index.tsx`
 
+# Dokomentacja Końcowa
+
+Schemat archutektury systemu
+![image info](Images/ZPR_diagram_klas.drawio.png)
+
+Z zakresu wyznaczonych wcześniej prac udało się osiągnąć:
+* **Założenia etapu 1** -
+w które się wliczało Skonfigurowanie projektu, stworzenie prostego GUI i zapewniemie przepływu informacji pomiędzy Rustem a typesriptem
+
+* **Założenia etapu 2** - które zakładały stworzenie logiki gry oraz implementacja gry w trybie dla dwóch graczy jak i z botem.
+
+Z zakresu wyznaczonych wcześniej prac nie udało się osiągnąć:
+* Przy trybie dwuosobowym chcieliśmy by każdy gracz wpisywał swój nick i następnie w oddzielnych oknach przeglądarki każdy gracz widziałby swoje pionki na dole planszy i tak odbywała by się gra. Nie udało nam się tego nie stety zaimplementować i zostaliśmy na graniu w jednym oknie przeglądarki gdzie jeden gracz ma swoje pionki na górze planyszy a drugi na dole.
+* Licznik zbitych pionków - uznaliśmy, że jest to niepotrzebne.
+
+Napotkane przeszkody i rozwiązania na nie:
+* Początkowo duża przeszkodą było używanie zmiennych z typesripta w kodzie rusta, ponieważ trzeba było konwertować `JsValue` na odpowiedi typ z rust. Problem ten rozwiązaliśmy dzięki użyciu biblioteki `serde_wasm_bindgen` która znacznie ułatwiła te zadanie do jednej funkcji.
+* Kolejnym problemem było użycie rusta w typesript, ponieważ bez zainicjalizowania biblioteki funkcje z rusta nie chciały działać. Rozwiązaliśmy ten problem używając dynamicznego importu biblioteki i inicjalizacji w `useEffect` dzięki czemu nie musieliśmy odpalać ponownie serwera po kompilacji kodu rusta.
+
+Zmiany w porównaniu do originalnego planu:
+* Początkowo planowliśmy używać `JavaScript + react + rust` lecz zdecydowaliśmy się na `typescript + react + rust` dzięki czemu wszędzie były statyczne typy ułatwiało to współpracę z rust który umożliwia deklaracje definicji funkcji w typescript dzięki czemu później jest ich łatwiej używać.
+
+Dlaczego projekt zasługuje na dobrą ocene:
+* Zostały wykonane wszystkie główne założenia projektu
+* Schludny interfecs graficzny i kod zgodny z dobrą praktyką programowania
+* Użycie w kodzie zalet poszczególnych jezyków i ich zaawansowanych mechanizmów np. dla reacta użycie "Effect Hook" co pozwalało na pisanie mniejszej ilości kodu, dla typescript użycie interfejsów co popawia czytelność kodu, dla rusta użycie obiektowości języka i specyfikowania czasu życia obiektów.
+* Użycie narzędzi do formatowania kodu
+
