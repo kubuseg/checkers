@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import "./App.css";
+import "./App.scss";
 import init, {
   Move,
   possible_moves,
@@ -95,13 +95,12 @@ export default function Game() {
   const [whiteIsNext, setWhiteIsNext] = useState<boolean>(true);
   const [possibleMoves, setPossibleMoves] = useState<Move[]>([]);
   const [winner, setWinner] = useState<Color | null>(null);
-
-  // useEffect(() => {
-  //   init();
-  // });
+  const [isPlayerMode, setIsPlayerMode] = useState<boolean>(false);
+  const [selectedColor, setSelectedColor] = useState<Color>(Color.White);
 
   useEffect(() => {
     init().then(() => {
+      //Get possible moves for player
       const possibleMoves = selectedFigureNo
         ? possible_moves(selectedFigureNo, figureMap)
         : [];
@@ -142,6 +141,8 @@ export default function Game() {
       } else {
         setSelectedFigureNo(null);
         setWhiteIsNext(!whiteIsNext);
+        setPossibleMoves([]);
+        //If there is a multicapure scenario figure doesnt become king
         if (becomesKing(move.square_no, move.moved_figure)) {
           newFigureMap.set(move.square_no, {
             kind: "king",
@@ -156,13 +157,16 @@ export default function Game() {
 
   useEffect(() => {
     init().then(() => {
-      if (!whiteIsNext) {
-        const bestMove = get_best_move(Color.Black, figureMap);
-        console.log(bestMove);
+      //Bot move
+      if (!isPlayerMode && !isPlayerTurn(whiteIsNext, selectedColor)) {
+        const bestMove = get_best_move(
+          selectedColor === Color.White ? Color.Black : Color.White,
+          figureMap
+        );
         bestMove.forEach((move) => makeMove(move));
       }
     });
-  }, [figureMap, makeMove, whiteIsNext]);
+  }, [figureMap, makeMove, whiteIsNext, isPlayerMode, selectedColor]);
 
   useEffect(() => {
     init().then(() => {
@@ -175,7 +179,10 @@ export default function Game() {
     clickedSquareNo: number,
     clickedSqareFigure: IFigure | null
   ) => {
-    if (winner) {
+    if (
+      winner ||
+      (!isPlayerMode && !isPlayerTurn(whiteIsNext, selectedColor))
+    ) {
       return;
     }
     if (
@@ -193,11 +200,61 @@ export default function Game() {
     if (selectedFigureNo && move) {
       makeMove(move);
     }
-    console.log(clickedSquareNo);
+  };
+
+  const handleBotModeClick = () => {
+    if (isPlayerMode) {
+      setFigureMap(getInitialFiguresState());
+      setSelectedFigureNo(null);
+      setIsPlayerMode(false);
+      setWhiteIsNext(true);
+    }
+  };
+
+  const handlePlayerModeClick = () => {
+    if (!isPlayerMode) {
+      setFigureMap(getInitialFiguresState());
+      setSelectedFigureNo(null);
+      setIsPlayerMode(true);
+      setWhiteIsNext(true);
+    }
+  };
+
+  const handleResetGameClick = () => {
+    setFigureMap(getInitialFiguresState());
+    setSelectedFigureNo(null);
+    setWhiteIsNext(true);
+  };
+
+  const onColorRadioButtonChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setSelectedColor(strToColor(event.target.value));
+    setFigureMap(getInitialFiguresState());
+    setSelectedFigureNo(null);
+    setWhiteIsNext(true);
   };
 
   return (
     <div className="game">
+      <div onChange={onColorRadioButtonChange} className="color-select">
+        <input
+          type="radio"
+          value="white"
+          name="color"
+          checked={selectedColor === Color.White}
+          className="radio-button"
+        />
+        White
+        <input
+          type="radio"
+          value="black"
+          name="color"
+          checked={selectedColor === Color.Black}
+          className="radio-button"
+        />
+        Black
+      </div>
       <div className="game-board">
         <div
           className="status"
@@ -214,9 +271,15 @@ export default function Game() {
         />
       </div>
       <div className="container_row">
-        <button className="button1">Play with bot</button>
-        <button className="button2">Play with Player</button>
-        <button className="button3">Reset game</button>
+        <button className="button color1" onClick={handleBotModeClick}>
+          Play with bot
+        </button>
+        <button className="button color2" onClick={handlePlayerModeClick}>
+          Play with Player
+        </button>
+        <button className="button color3" onClick={handleResetGameClick}>
+          Reset game
+        </button>
       </div>
     </div>
   );
@@ -224,6 +287,14 @@ export default function Game() {
 
 const isOnDarkDiag = (i: number): boolean => {
   return [1, 3, 5, 7, 9].includes(Math.abs((i % 10) - Math.floor(i / 10)) % 11);
+};
+
+const isPlayerTurn = (whiteIsNext: boolean, selectedColor: Color): boolean => {
+  return selectedColor === (whiteIsNext ? Color.White : Color.Black);
+};
+
+const strToColor = (color: string) => {
+  return color === "white" ? Color.White : Color.Black;
 };
 
 const becomesKing = (sqareNo: number, figure: IFigure): boolean => {
