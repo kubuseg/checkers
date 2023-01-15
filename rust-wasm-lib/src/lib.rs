@@ -135,10 +135,13 @@ trait GetMoves {
     ) {
         //Check if captured figure is the enemy and it isn't by the border
         if self.get_figure().color != captured_figure.color
-            && ![0, 9].contains(&(captured_figure_no % 10)) //check if isn't at border
-            && !(0..10).contains(&captured_figure_no) //check board top
+            //check if isn't at border
+            && ![0, 9].contains(&(captured_figure_no % 10)) 
+            //check board top
+            && !(0..10).contains(&captured_figure_no) 
+            //check board floor
             && !(90..100).contains(&captured_figure_no)
-        //check board floor
+
         {
             //Check for possible block
             let poss_block_figure_no =
@@ -315,6 +318,7 @@ fn get_poss_moves(
     moved_figure: &IFigure,
     figure_map: &HashMap<i32, IFigure>,
 ) -> Vec<Move> {
+    //Get possible moves for either figure
     let poss_moves: Vec<Move> = if moved_figure.kind == "man" {
         let man = Man::new(moved_figure_no, (*moved_figure).clone());
         man.get_poss_moves(figure_map)
@@ -334,12 +338,11 @@ export function possible_moves(clicked_sqare_no: number, figure_map: Map<number,
 pub fn possible_moves(moved_figure_no: i32, figure_map: JsValue) -> Result<JsValue, JsError> {
     let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
 
-    let moved_figure: IFigure;
-    if let Some(figure) = figure_map.get(&moved_figure_no) {
-        moved_figure = figure.clone();
+    let moved_figure: IFigure = if let Some(figure) = figure_map.get(&moved_figure_no) {
+        figure.clone()
     } else {
-        moved_figure = IFigure::default()
-    }
+        IFigure::default()
+    };
 
     let poss_moves = get_poss_moves(moved_figure_no, &moved_figure, &figure_map);
 
@@ -396,7 +399,6 @@ pub fn get_best_move(color: Color, figure_map: JsValue) -> Result<JsValue, JsErr
     let (bestval, mov) = board.minimax(10, i32::MIN, i32::MAX, color);
     let elapsed = start.elapsed();
     console::log_1(&format!("Elapsed: {elapsed:?}").into());
-    console::log_1(&format!("Best val: {bestval:?}").into());
     Ok(serde_wasm_bindgen::to_value(&mov)?)
 }
 
@@ -471,6 +473,7 @@ impl Board<'_> {
     }
 
     fn get_forced_from_captures(&mut self, capture_moves: &Vec<Move>) -> (i32, Vec<Vec<Move>>) {
+        //Recurrentlly getting all forced moves with most multi-captures
         if capture_moves.is_empty() {
             return (0, vec![]);
         }
@@ -487,13 +490,11 @@ impl Board<'_> {
             //Recursivly get depth and moves
             let (depth, moves) = self.get_forced_from_captures(&new_capture_moves);
             self.unmake_move(mov);
-            let moves_size = moves.len();
             //Add current move
-            let mut new_moves = moves;
-            if moves_size == 0 {
+            if moves.len() == 0 {
                 tree_depths.push((depth + 1, vec![(*mov).clone()]));
-                continue;
             };
+            let mut new_moves = moves;
             for vec in &mut new_moves {
                 vec.push((*mov).clone());
                 tree_depths.push((depth + 1, vec.to_vec()));

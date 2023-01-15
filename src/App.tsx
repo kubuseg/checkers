@@ -10,7 +10,7 @@ import init, {
 import blackCrown from "./blackCrown.svg";
 import whiteCrown from "./whiteCrown.svg";
 import { Color } from "./pkg/rust_wasm_lib";
-import * as lodash from "lodash";
+import lodash from "lodash";
 
 interface IFigure {
   color: "black" | "white";
@@ -100,7 +100,7 @@ export default function Game() {
 
   useEffect(() => {
     init().then(() => {
-      //Get possible moves for player
+      //Get possible for selectedFigure
       const possibleMoves = selectedFigureNo
         ? possible_moves(selectedFigureNo, figureMap)
         : [];
@@ -129,7 +129,7 @@ export default function Game() {
       if (move.captured_figure_no) {
         //Delete captured figure
         newFigureMap.delete(move.captured_figure_no);
-        //Check if multi-capture scenario isn't happening
+        //Check if multi-capture scenario is happening
         isMultiCaptureScenario = possible_moves(
           move.square_no,
           newFigureMap
@@ -142,7 +142,7 @@ export default function Game() {
         setSelectedFigureNo(null);
         setWhiteIsNext(!whiteIsNext);
         setPossibleMoves([]);
-        //If there is a multicapure scenario figure doesnt become king
+        //If there is a multi-capture  scenario figure doesn't become king
         if (becomesKing(move.square_no, move.moved_figure)) {
           newFigureMap.set(move.square_no, {
             kind: "king",
@@ -151,6 +151,7 @@ export default function Game() {
         }
       }
       setFigureMap(newFigureMap);
+      setWinner(get_winner(newFigureMap));
     },
     [figureMap, whiteIsNext]
   );
@@ -167,13 +168,6 @@ export default function Game() {
       }
     });
   }, [figureMap, makeMove, whiteIsNext, isPlayerMode, selectedColor]);
-
-  useEffect(() => {
-    init().then(() => {
-      let winner = get_winner(figureMap);
-      setWinner(winner);
-    });
-  }, [figureMap]);
 
   const handleClick = (
     clickedSquareNo: number,
@@ -258,7 +252,7 @@ export default function Game() {
       <div className="game-board">
         <div
           className="status"
-          style={{ color: whiteIsNext ? "white" : "black" }}
+          style={{ color: winner ? colorToStr(winner) : (whiteIsNext ? "white" : "black") }}
         >
           {winner
             ? `The winner is ${winner}!`
@@ -295,6 +289,10 @@ const isPlayerTurn = (whiteIsNext: boolean, selectedColor: Color): boolean => {
 
 const strToColor = (color: string) => {
   return color === "white" ? Color.White : Color.Black;
+};
+
+const colorToStr = (color: Color) => {
+  return color === Color.White ? "white" : "black";
 };
 
 const becomesKing = (sqareNo: number, figure: IFigure): boolean => {
