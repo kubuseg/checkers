@@ -394,7 +394,7 @@ pub fn get_best_move(color: Color, figure_map: JsValue) -> Result<JsValue, JsErr
     let mut figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
     let start = instant::Instant::now();
     let mut board: Board = Board::new(&mut figure_map);
-    let (bestval, mov) = board.minimax(10, i32::MIN, i32::MAX, color);
+    let (_, mov) = board.minimax(10, i32::MIN, i32::MAX, color);
     let elapsed = start.elapsed();
     console::log_1(&format!("Elapsed: {elapsed:?}").into());
     Ok(serde_wasm_bindgen::to_value(&mov)?)
