@@ -1,7 +1,7 @@
 .figure {
   display: flex;
-  width: 40px;
-  height: 40px;
+  width: 80%;
+  height: 80%;
   margin: auto;
   border-radius: 50%;
   border: 1px inset snow;
@@ -9,4 +9,41 @@
 
 .crown {
   transform: scale(0.55);
+}
+
+.button1, .button2, .button3 {
+  border: solid;
+  color: white;
+  padding: 5px 16px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font: 16px "Century Gothic", Futura, sans-serif;
+  height: 80px;
+  margin-left: 20px;
+}
+
+.button1 {
+  grid-column: 1;
+  grid-row: 1;
+  background-color: #f4511e;
+}
+
+.button2 {
+  grid-column: 1;
+  grid-row: 2;
+  background-color: #008CBA;
+}
+
+.button3 {
+  grid-column: 1;
+  grid-row: 3;
+  background-color:olivedrab;
+}
+.container_row{
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: 10px;
+  margin-right: auto;
+  display: grid;
 }

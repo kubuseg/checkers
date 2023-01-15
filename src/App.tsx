@@ -114,9 +114,7 @@ export default function Game() {
             forcedMoves.some((fMove) => lodash.isEqual(fMove, move))
           )
         );
-      }
-
-      else setPossibleMoves(possibleMoves);
+      } else setPossibleMoves(possibleMoves);
     });
   }, [figureMap, selectedFigureNo, whiteIsNext]);
 
@@ -159,12 +157,9 @@ export default function Game() {
   useEffect(() => {
     init().then(() => {
       if (!whiteIsNext) {
-        const bestMove = get_best_move(
-          Color.Black,
-          figureMap
-        );
+        const bestMove = get_best_move(Color.Black, figureMap);
         console.log(bestMove);
-        bestMove.forEach((move) => makeMove(move))
+        bestMove.forEach((move) => makeMove(move));
       }
     });
   }, [figureMap, makeMove, whiteIsNext]);
@@ -217,6 +212,11 @@ export default function Game() {
           possibleMoves={possibleMoves}
           onClick={handleClick}
         />
+      </div>
+      <div className="container_row">
+        <button className="button1">Play with bot</button>
+        <button className="button2">Play with Player</button>
+        <button className="button3">Reset game</button>
       </div>
     </div>
   );
