@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import init, {
   Move,
   possible_moves,
   get_winner,
   forced_moves,
+  get_best_move,
 } from "./pkg/rust_wasm_lib";
 import blackCrown from "./blackCrown.svg";
 import whiteCrown from "./whiteCrown.svg";
@@ -107,51 +108,71 @@ export default function Game() {
       const forcedMoves = selectedFigureNo
         ? forced_moves(whiteIsNext ? Color.White : Color.Black, figureMap)
         : [];
-      if (forcedMoves.length)
+      if (forcedMoves.length) {
         setPossibleMoves(
           possibleMoves.filter((move) =>
             forcedMoves.some((fMove) => lodash.isEqual(fMove, move))
           )
         );
+      }
+
       else setPossibleMoves(possibleMoves);
     });
   }, [figureMap, selectedFigureNo, whiteIsNext]);
 
-  const makeMove = (
-    move: Move,
-    movedFigureNo: number,
-    figureMap: Map<number, IFigure>
-  ): [boolean, IFigure, Map<number, IFigure>] => {
-    const movedFigure = figureMap.get(movedFigureNo);
-    if (!movedFigure)
-      return [
-        false,
-        { kind: "man", color: "white" },
-        new Map<number, IFigure>(),
-      ];
-    const newFigureMap = new Map<number, IFigure>(figureMap);
+  const makeMove = useCallback(
+    (move: Move) => {
+      const newFigureMap = figureMap;
 
-    //Move selected figure
-    newFigureMap.delete(movedFigureNo);
-    newFigureMap.set(move.square_no, movedFigure);
+      //Move selected figure
+      newFigureMap.delete(move.moved_figure_no);
+      newFigureMap.set(move.square_no, move.moved_figure);
 
-    let isMultiCaptureScenario: boolean = false;
-    if (move.is_capture && move.captured_figure_no) {
-      //Delete captured figure
-      newFigureMap.delete(move.captured_figure_no);
-      //Check if multi-capture scenario isn't happening
-      isMultiCaptureScenario = possible_moves(
-        move.square_no,
-        newFigureMap
-      ).some((move) => move.is_capture === true);
-    }
-    return [isMultiCaptureScenario, movedFigure, newFigureMap];
-  };
+      let isMultiCaptureScenario: boolean = false;
+      if (move.captured_figure_no) {
+        //Delete captured figure
+        newFigureMap.delete(move.captured_figure_no);
+        //Check if multi-capture scenario isn't happening
+        isMultiCaptureScenario = possible_moves(
+          move.square_no,
+          newFigureMap
+        ).some((move) => move.captured_figure_no);
+      }
+
+      if (isMultiCaptureScenario) {
+        setSelectedFigureNo(move.square_no);
+      } else {
+        setSelectedFigureNo(null);
+        setWhiteIsNext(!whiteIsNext);
+        if (becomesKing(move.square_no, move.moved_figure)) {
+          newFigureMap.set(move.square_no, {
+            kind: "king",
+            color: move.moved_figure.color,
+          });
+        }
+      }
+      setFigureMap(newFigureMap);
+    },
+    [figureMap, whiteIsNext]
+  );
 
   useEffect(() => {
     init().then(() => {
-    let winner = get_winner(figureMap);
-    setWinner(winner);
+      if (!whiteIsNext) {
+        const bestMove = get_best_move(
+          Color.Black,
+          figureMap
+        );
+        console.log(bestMove);
+        bestMove.forEach((move) => makeMove(move))
+      }
+    });
+  }, [figureMap, makeMove, whiteIsNext]);
+
+  useEffect(() => {
+    init().then(() => {
+      let winner = get_winner(figureMap);
+      setWinner(winner);
     });
   }, [figureMap]);
 
@@ -175,31 +196,18 @@ export default function Game() {
 
     let move = possibleMoves.find((move) => move.square_no === clickedSquareNo);
     if (selectedFigureNo && move) {
-      let [isMultiCaptureScenario, movedFigure, newFigureMap] = makeMove(
-        move,
-        selectedFigureNo,
-        figureMap
-      );
-      if (isMultiCaptureScenario) {
-        setSelectedFigureNo(clickedSquareNo);
-      } else {
-        setSelectedFigureNo(null);
-        setWhiteIsNext(!whiteIsNext);
-        if (becomesKing(move.square_no, movedFigure)) {
-          newFigureMap.set(move.square_no, {
-            kind: "king",
-            color: movedFigure.color,
-          });
-        }
-      }
-      setFigureMap(newFigureMap);
+      makeMove(move);
     }
+    console.log(clickedSquareNo);
   };
 
   return (
     <div className="game">
       <div className="game-board">
-        <div className="status" style={{ color: whiteIsNext ? "white" : "black" }}>
+        <div
+          className="status"
+          style={{ color: whiteIsNext ? "white" : "black" }}
+        >
           {winner
             ? `The winner is ${winner}!`
             : "Next player: " + (whiteIsNext ? "White" : "Black")}

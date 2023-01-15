@@ -19,9 +19,10 @@ pub fn run() {
 const Move: &'static str = r#"
 export interface Move {
     moved_figure_no: number,
-    square_no: number;
-    is_capture: boolean;
-    captured_figure_no?: number;
+    moved_figure: IFigure,
+    square_no: number,
+    captured_figure_no?: number,
+    captured_figure?: IFigure,
 }
 "#;
 
@@ -29,17 +30,29 @@ export interface Move {
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct Move {
     moved_figure_no: i32,
+    moved_figure: IFigure,
     square_no: i32,
-    is_capture: bool,
     captured_figure_no: Option<i32>,
+    captured_figure: Option<IFigure>,
+}
+
+impl fmt::Debug for IFigure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Color: {}, Kind: {}", self.color, self.kind)
+    }
+}
+impl fmt::Display for IFigure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Color: {}, Kind: {}", self.color, self.kind)
+    }
 }
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(moved_no:{}, sqare_no:{}, is_cap:{})",
-            self.moved_figure_no, self.square_no, self.is_capture
+            "(moved_figure_no:{}, moved_figure:{}, sqare_no:{}, captured_figure_no:{:?})",
+            self.moved_figure_no, self.moved_figure, self.square_no, self.captured_figure_no
         )
     }
 }
@@ -90,9 +103,10 @@ trait GetMoves {
             }
             None => poss_moves.push(Move {
                 moved_figure_no: *self.get_figure_no(),
+                moved_figure: (*self.get_figure()).clone(),
                 square_no: target_sqare_no,
-                is_capture: false,
                 captured_figure_no: None,
+                captured_figure: None,
             }),
         }
     }
@@ -132,9 +146,10 @@ trait GetMoves {
             if figure_map.get(&poss_block_figure_no).is_none() {
                 poss_moves.push(Move {
                     moved_figure_no: *self.get_figure_no(),
+                    moved_figure: (*self.get_figure()).clone(),
                     square_no: poss_block_figure_no,
-                    is_capture: true,
                     captured_figure_no: Some(captured_figure_no),
+                    captured_figure: Some((*captured_figure).clone()),
                 });
             }
         }
@@ -165,7 +180,7 @@ impl GetMoves for King {
                 let len_before = poss_moves.len();
                 Self::add_poss_move_forward(self, target_sqare_no, &mut poss_moves, figure_map);
                 let is_capture = match poss_moves.last() {
-                    Some(figure) => figure.is_capture,
+                    Some(mov) => mov.captured_figure_no.is_some(),
                     None => false,
                 };
                 if poss_moves.len() == len_before || is_capture {
@@ -332,7 +347,7 @@ pub fn possible_moves(moved_figure_no: i32, figure_map: JsValue) -> Result<JsVal
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum Color {
     Black,
     White,
@@ -345,25 +360,9 @@ export function get_winner(figure_map: Map<number, IFigure>): Color?;
 
 #[wasm_bindgen(skip_typescript)]
 pub fn get_winner(figure_map: JsValue) -> Result<JsValue, JsError> {
-    let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
-    let mut result: Option<Color> = None;
-    for color in ["black", "white"] {
-        let any_poss_moves = figure_map
-            .iter()
-            .filter(|&(_, figure)| figure.color == color)
-            .any(|(figure_no, figure)| {
-                let poss_moves = get_poss_moves(*figure_no, figure, &figure_map);
-                !poss_moves.is_empty()
-            });
-        let any_figure = figure_map.iter().any(|(_, figure)| figure.color == color);
-        if !any_poss_moves || !any_figure {
-            if color == "black" {
-                result = Some(Color::White);
-            } else {
-                result = Some(Color::Black);
-            };
-        }
-    }
+    let mut figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+    let board: Board = Board::new(&mut figure_map);
+    let result = board.get_winner();
     Ok(serde_wasm_bindgen::to_value(&result)?)
 }
 
@@ -374,74 +373,264 @@ export function forced_moves(color: Color, figure_map: Map<number, IFigure>): Mo
 
 #[wasm_bindgen(skip_typescript)]
 pub fn forced_moves(color: Color, figure_map: JsValue) -> Result<JsValue, JsError> {
-    let figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
-
-    //Get moves for color
-    let figures = figure_map.iter().filter(|&(_, figure)| {
-        figure.color
-            == match color {
-                Color::White => "white",
-                Color::Black => "black",
-            }
-    });
-    let mut capture_moves: Vec<Move> = vec![];
-    for (figure_no, figure) in figures {
-        let moves: Vec<Move> = get_poss_moves(*figure_no, figure, &figure_map)
-            .into_iter()
-            .filter(|mov| mov.is_capture)
-            .collect();
-        for mov in moves {
-            capture_moves.push(mov);
-        }
+    let mut figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+    let mut board: Board = Board::new(&mut figure_map);
+    let forced_moves = board.get_forced_moves(&color);
+    let mut first_forced_moves: Vec<Move> = vec![];
+    for mov in &forced_moves {
+        first_forced_moves.push(mov[0].clone());
     }
-    let (_depth, mut moves) = get_forced_moves(&capture_moves, &figure_map);
-    //Reverse because forced moves returns moves in backward order
-    moves.reverse();
-    Ok(serde_wasm_bindgen::to_value(&moves)?)
+    Ok(serde_wasm_bindgen::to_value(&first_forced_moves)?)
 }
 
-fn get_forced_moves(
-    capture_moves: &Vec<Move>,
-    figure_map: &HashMap<i32, IFigure>,
-) -> (i32, Vec<Move>) {
-    if capture_moves.is_empty() {
-        return (0, vec![]);
+#[wasm_bindgen(typescript_custom_section)]
+const possible_moves: &'static str = r#"
+export function get_best_move(color: Color, figure_map: Map<number, IFigure>): Move[];
+"#;
+
+#[wasm_bindgen(skip_typescript)]
+pub fn get_best_move(color: Color, figure_map: JsValue) -> Result<JsValue, JsError> {
+    let mut figure_map: HashMap<i32, IFigure> = serde_wasm_bindgen::from_value(figure_map)?;
+    let start = instant::Instant::now();
+    let mut board: Board = Board::new(&mut figure_map);
+    let (bestval, mov) = board.minimax(10, i32::MIN, i32::MAX, color);
+    let elapsed = start.elapsed();
+    console::log_1(&format!("Elapsed: {elapsed:?}").into());
+    console::log_1(&format!("Best val: {bestval:?}").into());
+    Ok(serde_wasm_bindgen::to_value(&mov)?)
+}
+
+struct Board<'a> {
+    figure_map: &'a mut HashMap<i32, IFigure>,
+}
+
+impl Board<'_> {
+    fn new(figure_map: &mut HashMap<i32, IFigure>) -> Board {
+        Board { figure_map }
     }
 
-    let mut tree_depths: Vec<(i32, Move)> = vec![];
-    for mov in capture_moves {
-        let mut new_figure_map = figure_map.clone();
-
-        if let Some(moved_figure) = figure_map.get(&mov.moved_figure_no) {
-            //Making the move
-            new_figure_map.remove(&mov.moved_figure_no);
-            new_figure_map.insert(mov.square_no, (*moved_figure).clone());
-            if let Some(captured_figure_no) = mov.captured_figure_no {
-                new_figure_map.remove(&captured_figure_no);
-            }
-            //Geting new moves, moved figure doesn't change
-            let new_capture_moves: Vec<Move> =
-                get_poss_moves(mov.square_no, moved_figure, &new_figure_map)
-                    .into_iter()
-                    .filter(|mov| mov.is_capture)
-                    .collect();
-            //Recursivly get depth and moves
-            let (depth, _) = get_forced_moves(&new_capture_moves, &new_figure_map);
-            //Add current move
-            tree_depths.push((depth, (*mov).clone()));
+    fn make_move(&mut self, mov: &Move) {
+        //Making the move
+        self.figure_map.remove(&mov.moved_figure_no);
+        self.figure_map
+            .insert(mov.square_no, mov.moved_figure.clone());
+        if let Some(captured_figure_no) = mov.captured_figure_no {
+            self.figure_map.remove(&captured_figure_no);
         }
     }
 
-    let max_depth = tree_depths
-        .iter()
-        .max_by_key(|(depth, _)| depth)
-        .unwrap_or(&(i32::MIN, Move::default()))
-        .0;
-    let mut max_depth_moves: Vec<Move> = vec![];
-    for (_, mov) in tree_depths.iter().filter(|(depth, _)| *depth == max_depth) {
-        max_depth_moves.push((*mov).clone());
+    fn make_moves(&mut self, moves: &Vec<Move>) {
+        for mov in moves {
+            self.make_move(mov);
+        }
     }
-    (max_depth + 1, max_depth_moves)
+
+    fn unmake_move(&mut self, mov: &Move) {
+        //Unmaking the move;
+        self.figure_map
+            .insert(mov.moved_figure_no, mov.moved_figure.clone());
+        self.figure_map.remove(&mov.square_no);
+        if let Some(captured_figure_no) = mov.captured_figure_no {
+            if let Some(captured_figure) = &mov.captured_figure {
+                self.figure_map
+                    .insert(captured_figure_no, (*captured_figure).clone());
+            }
+        }
+    }
+
+    fn unmake_moves(&mut self, moves: &Vec<Move>) {
+        for mov in moves {
+            self.unmake_move(mov);
+        }
+    }
+
+    fn get_forced_moves(&mut self, color: &Color) -> Vec<Vec<Move>> {
+        //Get moves for color
+        let figures = self.figure_map.iter().filter(|&(_, figure)| {
+            figure.color
+                == match color {
+                    Color::White => "white",
+                    Color::Black => "black",
+                }
+        });
+        let mut capture_moves: Vec<Move> = vec![];
+        for (figure_no, figure) in figures {
+            let moves: Vec<Move> = get_poss_moves(*figure_no, figure, self.figure_map)
+                .into_iter()
+                .filter(|mov| mov.captured_figure_no.is_some())
+                .collect();
+            for mov in moves {
+                capture_moves.push(mov);
+            }
+        }
+        let (_depth, mut moves_vector) = self.get_forced_from_captures(&capture_moves);
+        for moves in &mut moves_vector {
+            moves.reverse();
+        }
+        moves_vector
+    }
+
+    fn get_forced_from_captures(&mut self, capture_moves: &Vec<Move>) -> (i32, Vec<Vec<Move>>) {
+        if capture_moves.is_empty() {
+            return (0, vec![]);
+        }
+
+        let mut tree_depths: Vec<(i32, Vec<Move>)> = vec![];
+        for mov in capture_moves {
+            self.make_move(mov);
+            //Geting new moves, moved figure doesn't change
+            let new_capture_moves: Vec<Move> =
+                get_poss_moves(mov.square_no, &mov.moved_figure, self.figure_map)
+                    .into_iter()
+                    .filter(|mov| mov.captured_figure_no.is_some())
+                    .collect();
+            //Recursivly get depth and moves
+            let (depth, moves) = self.get_forced_from_captures(&new_capture_moves);
+            self.unmake_move(mov);
+            let moves_size = moves.len();
+            //Add current move
+            let mut new_moves = moves;
+            if moves_size == 0 {
+                tree_depths.push((depth + 1, vec![(*mov).clone()]));
+                continue;
+            };
+            for vec in &mut new_moves {
+                vec.push((*mov).clone());
+                tree_depths.push((depth + 1, vec.to_vec()));
+            }
+        }
+
+        let max_depth = tree_depths
+            .iter()
+            .max_by_key(|(depth, _)| depth)
+            .unwrap_or(&(i32::MIN, vec![]))
+            .0;
+        let mut max_depth_vectors: Vec<Vec<Move>> = vec![];
+        let (_, moves_vectors): (Vec<i32>, Vec<Vec<Move>>) = tree_depths
+            .into_iter()
+            .filter(|(depth, _)| *depth == max_depth)
+            .unzip();
+        for moves in moves_vectors {
+            max_depth_vectors.push(moves);
+        }
+        (max_depth, max_depth_vectors)
+    }
+
+    fn get_available_moves(&mut self, color: &Color) -> Vec<Vec<Move>> {
+        let forced_moves = self.get_forced_moves(color);
+        if forced_moves.iter().count() > 0 {
+            return forced_moves;
+        }
+        let mut poss_moves: Vec<Vec<Move>> = vec![];
+        let figures = self.figure_map.iter().filter(|&(_, figure)| {
+            figure.color
+                == match color {
+                    Color::White => "white",
+                    Color::Black => "black",
+                }
+        });
+        for (moved_figure_no, moved_figure) in figures {
+            for mov in get_poss_moves(*moved_figure_no, moved_figure, self.figure_map) {
+                poss_moves.push(vec![mov]);
+            }
+        }
+        poss_moves
+    }
+
+    fn get_winner(&self) -> Option<Color> {
+        let mut result: Option<Color> = None;
+        for color in ["black", "white"] {
+            let any_poss_moves = self
+                .figure_map
+                .iter()
+                .filter(|&(_, figure)| figure.color == color)
+                .any(|(figure_no, figure)| {
+                    let poss_moves = get_poss_moves(*figure_no, figure, self.figure_map);
+                    !poss_moves.is_empty()
+                });
+            let any_figure = self
+                .figure_map
+                .iter()
+                .any(|(_, figure)| figure.color == color);
+            if !any_poss_moves || !any_figure {
+                if color == "black" {
+                    result = Some(Color::White);
+                } else {
+                    result = Some(Color::Black);
+                };
+            }
+        }
+        result
+    }
+
+    fn get_rating(&self) -> i32 {
+        let mut color_rating: HashMap<&str, i32> =
+            [("white", 0), ("black", 0)].iter().cloned().collect();
+        for color in ["white", "black"] {
+            for (_, figure) in self
+                .figure_map
+                .iter()
+                .filter(|(_, figure)| figure.color == *color)
+            {
+                if figure.kind == "man" {
+                    *color_rating.get_mut(color).unwrap() += 1;
+                } else {
+                    *color_rating.get_mut(color).unwrap() += 3;
+                }
+            }
+        }
+        color_rating["white"] - color_rating["black"]
+    }
+
+    fn minimax(
+        &mut self,
+        target_deph: i32,
+        alpha: i32,
+        beta: i32,
+        color: Color,
+    ) -> (i32, Vec<Move>) {
+        if target_deph == 0 || self.get_winner().is_some() {
+            return (self.get_rating(), vec![]);
+        }
+
+        let moves_vector = self.get_available_moves(&color);
+        let mut best_move: Vec<Move> = vec![];
+        if color == Color::White {
+            let mut bestval = i32::MIN;
+            let mut alpha = alpha;
+            for mov in &moves_vector {
+                self.make_moves(mov);
+                let (value, _) = self.minimax(target_deph - 1, alpha, beta, Color::Black);
+                self.unmake_moves(mov);
+                if value > bestval {
+                    bestval = value;
+                    best_move = mov.to_vec();
+                }
+                alpha = cmp::max(alpha, bestval);
+                if beta <= alpha {
+                    break;
+                }
+            }
+            (bestval, best_move)
+        } else {
+            let mut bestval = i32::MAX;
+            let mut beta = beta;
+            for mov in &moves_vector {
+                self.make_moves(mov);
+                let (value, _) = self.minimax(target_deph - 1, alpha, beta, Color::White);
+                self.unmake_moves(mov);
+                if value < bestval {
+                    bestval = value;
+                    best_move = mov.to_vec();
+                }
+                beta = cmp::min(beta, bestval);
+                if beta <= alpha {
+                    break;
+                }
+            }
+            (bestval, best_move)
+        }
+    }
 }
 
 #[cfg(test)]
