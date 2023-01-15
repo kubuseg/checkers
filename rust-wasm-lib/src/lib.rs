@@ -77,8 +77,6 @@ enum Direction {
 }
 
 trait GetMoves {
-    fn new(figure_no: i32, figure: IFigure) -> Self;
-
     fn get_figure(&self) -> &IFigure;
     fn get_figure_no(&self) -> &i32;
 
@@ -165,9 +163,6 @@ struct King {
 }
 
 impl GetMoves for King {
-    fn new(figure_no: i32, figure: IFigure) -> Self {
-        Self { figure_no, figure }
-    }
     fn get_figure(&self) -> &IFigure {
         &self.figure
     }
@@ -208,6 +203,9 @@ impl GetMoves for King {
 }
 
 impl King {
+    fn new(figure_no: i32, figure: IFigure) -> Self {
+        Self { figure_no, figure }
+    }
     fn get_target_sqares_by_direction(&self, moves_no: i32, step: i32, moves_up: bool) -> Vec<i32> {
         let mut moves: Vec<i32> = vec![];
         if moves_up {
@@ -230,18 +228,6 @@ struct Man {
 }
 
 impl GetMoves for Man {
-    fn new(figure_no: i32, figure: IFigure) -> Self {
-        let zone: Zone = match figure_no % 10 {
-            0 => Zone::LeftBorder,
-            9 => Zone::RightBorder,
-            _ => Zone::Middle,
-        };
-        Self {
-            figure_no,
-            figure,
-            zone,
-        }
-    }
     fn get_figure(&self) -> &IFigure {
         &self.figure
     }
@@ -295,6 +281,18 @@ impl GetMoves for Man {
 }
 
 impl Man {
+    fn new(figure_no: i32, figure: IFigure) -> Self {
+        let zone: Zone = match figure_no % 10 {
+            0 => Zone::LeftBorder,
+            9 => Zone::RightBorder,
+            _ => Zone::Middle,
+        };
+        Self {
+            figure_no,
+            figure,
+            zone,
+        }
+    }
     fn add_poss_move_backwards(
         &self,
         captured_figure_no: i32,
